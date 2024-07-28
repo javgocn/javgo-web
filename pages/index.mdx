@@ -1,11 +1,17 @@
-# Introduction
- 
-Welcome to Nextra! This is a basic docs template. You can use it as a starting point for your own project :)
+import React from 'react';
+import styles from './index.module.css';
 
-## What is Nextra?
+const HomePage: React.FC = () => {
+    return (
+    <div className={styles.container}>
+    <h1 className={styles.title}>Welcome to My Tech Blog</h1>
+    <h2 className={styles.subtitle}>Stay updated with the latest tech trends</h2>
+    <div className={styles.buttons}>
+    <button className={`${styles.button} ${styles.quickStart}`}>Quick Start</button>
+    <button className={`${styles.button} ${styles.nav}`}>Navigation</button>
+    </div>
+    </div>
+    );
+};
 
-A **simple**, **powerful** and **flexible** site generation framework with everything you love from Next.js.
-
-## Documentation
-
-The documentation is available at [https://nextra.site](https://nextra.site).
+export default HomePage;
