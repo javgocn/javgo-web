@@ -1,22 +1,24 @@
 # JAVGO Web
 
-This is a template for creating documentation with [Nextra](https://nextra.site).
+本项目用于分享日常工作中的相关技术文档，一起进步吧！
 
-[**Live Demo →**](https://nextra-docs-template.vercel.app)
+[**快速阅读 →**](https://www.javgo.cn)
 
-[![](.github/screenshot.png)](https://nextra-docs-template.vercel.app)
+[![](./public/site/site-show.png)](https://www.javgo.cn)
 
-## Quick Start
+## 本地部署
 
-Click the button to clone this repository and deploy it on Vercel:
+首先运行如下命令安装相关依赖：
 
-[![](https://vercel.com/button)](https://vercel.com/new/clone?s=https%3A%2F%2Fgithub.com%2Fshuding%2Fnextra-docs-template&showOptionalTeamCreation=false)
+```bash
+pnpm i
+```
 
-## Local Development
+然后运行如下命令启动开发服务器，并访问 localhost:3000：
 
-First, run `pnpm i` to install the dependencies.
-
-Then, run `pnpm dev` to start the development server and visit localhost:3000.
+```bash
+pnpm dev
+```
 
 ## License
 
