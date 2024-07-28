@@ -1,7 +1,30 @@
 {
-  "index": "Introduction",
+  "index": {
+    "type": "page",
+    "title": "JAVGO",
+    "display": "hidden",
+    "theme": {
+      "layout": "raw"
+    }
+  },
+  "guid": "Guid",
+  "navigate": "Navigate",
   "another": "Another Page",
   "advanced": "Advanced (A Folder)",
+  "chat": {
+    "title": "Chat",
+    "type": "page",
+    "theme": {
+      "layout": "raw"
+    }
+  },
+  "projects": {
+    "title": "Project",
+    "type": "page",
+    "theme": {
+      "layout": "raw"
+    }
+  },
   "contact": {
     "title": "Contact ↗",
     "type": "page",

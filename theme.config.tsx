@@ -239,7 +239,7 @@ const config: DocsThemeConfig = {
         // 左侧菜单折叠的文件夹级别
         defaultMenuCollapseLevel: 1,
         // 自动折叠高于 defaultMenuCollapseLevel 的非活动文件夹
-        autoCollapse: true,
+        // autoCollapse: true,
         // 隐藏/显示侧边栏切换按钮
         toggleButton: true,
     },
@@ -250,7 +250,7 @@ const config: DocsThemeConfig = {
         // 目录侧边栏的标题。默认情况下，它是 “在此页面上"
         title: "TOC",
         // 滚动到顶部
-        backToTop: true,
+        // backToTop: true,
     },
     // 编辑链接
     editLink: {
@@ -271,16 +271,6 @@ const config: DocsThemeConfig = {
     },
     // 显示每个页面的最后更新日期
     gitTimestamp: true,
-    // 主题切换
-    themeSwitch: {
-        useOptions() {
-            return {
-                light: 'Light',
-                dark: 'Dark',
-                system: 'System'
-            }
-        }
-    },
 }
 
 export default config

@@ -1,17 +1,8 @@
-import React from 'react';
-import styles from './index.module.css';
+---
+title: JAVGO
+---
 
-const HomePage: React.FC = () => {
-    return (
-    <div className={styles.container}>
-    <h1 className={styles.title}>Welcome to My Tech Blog</h1>
-    <h2 className={styles.subtitle}>Stay updated with the latest tech trends</h2>
-    <div className={styles.buttons}>
-    <button className={`${styles.button} ${styles.quickStart}`}>Quick Start</button>
-    <button className={`${styles.button} ${styles.nav}`}>Navigation</button>
-    </div>
-    </div>
-    );
-};
+import HomePage from 'components/home'
 
-export default HomePage;
+<HomePage/>
+

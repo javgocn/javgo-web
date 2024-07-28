@@ -1,0 +1,126 @@
+/* index.module.css */
+.container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* 垂直居中 */
+    align-items: center; /* 水平居中 */
+    height: 90vh;
+    margin-top: -150px; /* 根据需要调整这个值来上移 */
+    font-family: 'Arial', sans-serif;
+    overflow: visible; /* 允许内容溢出 */
+    position: relative;
+    padding-left: 0;
+}
+
+.backgroundImage {
+    position: absolute;
+    right: -10%; /* 向右溢出10%，根据需要调整 */
+    bottom: 0;
+    width: 60%;  /* 或根据需要调整 */
+    height: 55%;  /* 或根据需要调整 */
+    background-image: url('/site/home-ide.png');
+    background-position: left top;  /* 只展示图片的左上部分 */
+    background-size: cover;  /* 覆盖div，可以根据需要调整为 contain */
+    background-repeat: no-repeat;
+    z-index: 0;
+}
+
+.title, .subtitle, .buttons {
+    z-index: 1; /* 确保文本和按钮位于背景图之上 */
+}
+
+.title {
+    font-size: 4rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    color: var(--shiki-token-punctuation);
+    text-shadow: 2px 2px 5px var(--shiki-token-punctuation);
+    text-align: center;
+
+    animation: gradient 3s ease infinite;
+    background: linear-gradient(to right, var(--shiki-token-punctuation), var(--shiki-token-comment));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+@keyframes gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.subtitle {
+    font-size: 1.5rem;
+    color: #666;
+    margin-bottom: 2rem;
+    text-align: center;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.buttons {
+    display: flex;
+    gap: 1rem;
+}
+
+.button {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.button:hover {
+    transform: translateY(-2px);
+}
+
+.quickStart {
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #919090;
+}
+
+.quickStart:hover {
+    background-color: #333;
+}
+
+.nav {
+    background-color: #ffffff;
+    color: #000;
+    box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.nav:hover {
+    background-color: #efefef;
+}
+
+/* 媒体查询，针对手机屏幕尺寸进行样式调整 */
+@media (max-width: 768px) {
+    .container {
+        margin-top: 0; /* 在小屏幕上不进行上移 */
+        padding: 20px; /* 添加内边距防止内容触碰屏幕边缘 */
+    }
+
+    .title {
+        font-size: 2rem; /* 减小标题字体大小 */
+        margin-bottom: 0.5rem; /* 减小标题与副标题间距 */
+    }
+
+    .subtitle {
+        font-size: 1rem; /* 减小副标题字体大小 */
+        margin-bottom: 1rem; /* 调整间距 */
+    }
+
+    .buttons {
+        flex-direction: column; /* 将按钮堆叠为垂直排列 */
+        gap: 0.5rem;
+    }
+
+    .button {
+        padding: 0.5rem 1rem; /* 调整按钮大小 */
+        font-size: 0.8rem; /* 减小按钮内文字大小 */
+    }
+}
