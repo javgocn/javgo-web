@@ -27,6 +27,12 @@ interface LinkCardContainerProps extends ComponentProps<'div'> {
   children: ReactNode
 }
 
+interface LinkCardContainerProps {
+    children: ReactNode
+    className?: string
+    style?: React.CSSProperties
+}
+
 export function LinkCardContainer({ children, className, style, ...props }: LinkCardContainerProps) {
   return (
     <div className={`${styles.cards} ${className}`} style={style} {...props}>
