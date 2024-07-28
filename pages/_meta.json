@@ -7,8 +7,9 @@
       "layout": "raw"
     }
   },
-  "guid": "Guid",
-  "navigate": "Navigate",
+  "guid": "Introduce",
+  "navigate": "站点导航",
+  "springboot": "Spring Boot",
   "another": "Another Page",
   "advanced": "Advanced (A Folder)",
   "chat": {
