@@ -214,7 +214,7 @@ const config: DocsThemeConfig = {
                 <span>
                     {/* ICP 备案信息 */}
                     <a href="https://beian.miit.gov.cn/" target="_blank">
-          京ICP备202xxxxxx87号-1
+          黔ICP备2023002021号-2
         </a>
                 </span>
                 <svg className="icon" viewBox="0 0 1024 1024" version="1.1"
@@ -229,7 +229,7 @@ const config: DocsThemeConfig = {
                 <span>
                     {/* 公安备案信息 */}
                     <a href="https://beian.miit.gov.cn/" target="_blank">
-                        京公网安备 110xxxxxx947
+
                 </a>
                 </span>
             </>
@@ -250,14 +250,16 @@ const config: DocsThemeConfig = {
             <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
             <meta property="og:title" content="JAVGO"/>
             <meta property="og:description" content="JAVGO Stack"/>
+            {/*  站点 Title 图标  */}
+            <link rel="icon" href="/svg/logo.svg"/>
         </>
     ),
     // 站点横幅
     banner: {
         key: '1.0-release',
         text: (
-            <a href="https://github.com/javgocn/javgo-web" target="_blank">
-                🎉 JAVGO 1.0 is init. Read more →
+            <a href="Software/GPT4" target="_self">
+                🎉 GPT4 升级指南. Read more →
             </a>
         )
     },

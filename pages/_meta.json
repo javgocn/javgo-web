@@ -10,8 +10,8 @@
   "guid": "Introduce",
   "navigate": "站点导航",
   "springboot": "Spring Boot",
-  "another": "Another Page",
-  "advanced": "Advanced (A Folder)",
+  "Installed": "安装手册",
+  "Software": "软件合集",
   "chat": {
     "title": "Chat",
     "type": "page",

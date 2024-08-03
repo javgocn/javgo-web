@@ -1,0 +1,115 @@
+import { LinkCard, LinkCardContainer } from 'components/LinkCard'
+
+# Node
+
+## Docker
+
+参考文档：
+
+<LinkCardContainer>
+    <LinkCard
+        title="Node.js — Download Node.js®"
+        description="Node.js® is a JavaScript runtime built on Chrome's V8 JavaScript engine."
+        imageUrl="https://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web20240803160635.png"
+        href="https://nodejs.org/en/download/package-manager"
+    />
+</LinkCardContainer>
+
+拉取 Node 的 Docker 镜像，具体版本可以在上面的官方文档中选择：
+
+```basn
+docker pull node:14-alpine
+```
+
+验证环境中是否有正确的 Node.js 版本：
+
+```basn
+docker run node:14-alpine node -v
+```
+
+验证环境中是否有正确的 NPM 版本：
+
+```basn
+docker run node:14-alpine npm -v
+```
+
+## NVM（推荐）
+
+> TIP： 如果是 Windows 系统，则访问下面的链接下载安装即可。
+
+<LinkCardContainer>
+    <LinkCard
+        title="Releases · coreybutler/nvm-windows"
+        description="A node.js version management utility for Windows. Ironically written in Go. - coreybutler/nvm-windows"
+        imageUrl="https://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web20240803161631.png"
+        href="https://github.com/coreybutler/nvm-windows/releases"
+    />
+</LinkCardContainer>
+
+如果想设置镜像源，则打开安装路径下的 settings.txt 在末尾添加如下配置：
+
+```bash
+node_mirror: https://npmmirror.com/mirrors/node/
+npm_mirror: https://npmmirror.com/mirrors/npm/
+```
+
+---
+> TIP：下面介绍 MacOS 和 Linux 安装方式。
+
+使用 curl 或 wget 安装 NVM。以下是使用 curl 的命令：
+
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+```
+
+或者使用 wget：
+
+```bash
+wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+```
+
+> TIP: 安装脚本会克隆 NVM 仓库到 `~/.nvm`，并将脚本添加到 shell 配置文件中 (`~/.bash_profile`, `~/.zshrc`, `~/.profile`, 或 `~/.bashrc`)。
+
+为使 NVM 生效，需要重启终端或执行：
+
+```bash
+export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+```
+
+安装特定版本的 Node.js：
+
+```bash
+nvm install 18
+```
+
+设置默认 Node.js 版本：
+
+```bash
+nvm use 18
+nvm alias default 18
+```
+
+设置 npm 镜像：
+
+<LinkCardContainer>
+    <LinkCard
+        title="NPM镜像-阿里巴巴开源镜像站"
+        description="阿里巴巴开源的NPM镜像站"
+        imageUrl="https://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web20240803162732.png"
+        href="https://developer.aliyun.com/mirror/NPM?spm=a2c6h.13651102.0.0.3e221b11uvUC7n"
+    />
+</LinkCardContainer>
+
+```bash
+npm config set registry https://registry.npmmirror.com
+npm config set disturl https://npmmirror.com/mirrors/node
+```
+
+安装 pnpm：
+
+```bash
+npm install -g pnpm
+pnpm config set registry https://registry.npmmirror.com
+pnpm config set disturl https://npmmirror.com/mirrors/node
+```

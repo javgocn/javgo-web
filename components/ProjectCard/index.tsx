@@ -170,7 +170,7 @@ export default function ProjectPage() {
       },
       {
         title: 'PlayEdu',
-        description: 'PlayEdu 是一款业内领先的线上培训解决方案。PlayEdu 基于 Java + MySQL 开发，采用前后端分离模式，前端核心框架为 React18，后端核心框架为 SpringBoot3。',
+        description: 'PlayEdu 是一款业内领先的线上培训解决方案。PlayEdu 基于 Java + MySQL.mdx 开发，采用前后端分离模式，前端核心框架为 React18，后端核心框架为 SpringBoot3。',
         href: 'https://github.com/PlayEdu/PlayEdu',
         image: 'https://javgo-images.oss-cn-beijing.aliyuncs.com/2024-06-30-060505.png'
       },
@@ -182,7 +182,7 @@ export default function ProjectPage() {
       },
       {
         title: 'paicoding',
-        description: '一个基于 Spring Boot、MyBatis-Plus、MySQL、Redis、ElasticSearch、MongoDB、Docker、RabbitMQ 等技术栈实现的社区系统。',
+        description: '一个基于 Spring Boot、MyBatis-Plus、MySQL.mdx、Redis、ElasticSearch、MongoDB、Docker、RabbitMQ 等技术栈实现的社区系统。',
         href: 'https://github.com/itwanger/paicoding',
         image: 'https://javgo-images.oss-cn-beijing.aliyuncs.com/2024-06-30-060948.png'
       },

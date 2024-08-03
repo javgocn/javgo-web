@@ -1,0 +1,114 @@
+# MySQL
+
+## CentOS
+
+创建一个目录存储稍后需要下载的 MySQL：
+
+```bash
+mkdir -p /home/javgo/Download
+
+cd /home/javgo/Download
+```
+
+下载 rpm 安装包：
+
+```bash
+wget https://repo.mysql.com//mysql80-community-release-el7-9.noarch.rpm
+```
+
+安装：
+
+```bash
+yum localinstall mysql80-community-release-el7-9.noarch.rpm
+```
+
+配置 my.cnf：
+
+```bash
+vim /etc/my.cnf
+```
+
+按照实际情况填写：
+
+```bash
+# 全局设置
+[mysqld]
+user=mysql                        # mysql 用户
+basedir=/usr/local/mysql          # 安装目录
+datadir=/var/lib/mysql            # 数据目录
+socket=/var/lib/mysql/mysql.sock  # socket 文件
+pid-file=/var/run/mysqld/mysqld.pid # pid 文件
+log-error=/var/log/mysqld.log     # 错误日志
+
+# 端口设置
+port=3306
+
+# 性能优化参数
+max_connections=500                # 最大连接数
+max_allowed_packet=64M             # 允许的最大数据包大小
+table_open_cache=8000              # 表缓存
+sort_buffer_size=4M                # 排序缓冲区大小
+join_buffer_size=8M                # 联接缓冲区大小
+thread_cache_size=100              # 线程缓存
+query_cache_size=0                 # 查询缓存大小
+query_cache_type=0                 # 查询缓存类型
+tmp_table_size=64M                 # 临时表大小
+max_heap_table_size=64M            # 最大堆表大小
+innodb_buffer_pool_size=1G         # InnoDB 缓冲池大小
+innodb_log_file_size=256M          # InnoDB 日志文件大小
+innodb_log_buffer_size=64M         # InnoDB 日志缓冲区大小
+innodb_flush_log_at_trx_commit=1   # 事务提交时刷新日志
+
+# 字符集设置
+character-set-server=utf8mb4        # 服务器字符集
+collation-server=utf8mb4_general_ci # 服务器排序规则
+
+# 日志设置
+log-bin=mysql-bin                   # 启用二进制日志
+binlog_format=row                   # 二进制日志格式
+expire_logs_days=7                  # 日志过期天数
+slow_query_log=1                    # 启用慢查询日志
+slow_query_log_file=/var/log/mysql-slow.log # 慢查询日志文件
+long_query_time=2                   # 慢查询时间阈值（秒）
+
+# 安全设置
+sql_mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION
+skip-name-resolve                    # 跳过主机名解析
+
+# 复制设置（如使用主从复制）
+server-id=1                          # 服务器 ID
+log_slave_updates=1                  # 启用复制日志更新
+relay_log=relay-bin                  # 继电器日志
+relay_log_index=relay-bin.index      # 继电器日志索引
+auto_increment_increment=2           # 自增增量
+auto_increment_offset=1              # 自增偏移量
+
+# 其他设置
+innodb_file_per_table=1              # 每个表使用单独的表空间
+innodb_flush_method=O_DIRECT         # 刷新方法，避免双写缓冲
+innodb_lock_wait_timeout=50          # 锁等待超时
+
+# MySQL 8.0 新特性
+innodb_dedicated_server=1            # 专用服务器模式
+```
+
+## Docker
+
+> TIP: 下面演示的 Linux 系统为 CentOS 7.9。
+
+拉取 MySQL 的 Docker 镜像，官方维护的版本可以在 [Docker Hub](https://hub.docker.com/_/mysql) 进行查阅：
+
+![](https://www.yuque.com/api/filetransfer/images?url=https%3A%2F%2Fjavgo-images.oss-cn-beijing.aliyuncs.com%2F2024-04-21-022920.png&sign=9521e8f75a44e00d57490f2b9625cadc60b64c4c8839fd885e56edd076017b18)
+
+这里以 8.0 为例，执行如下命令拉取镜像：
+
+```bash
+docker pull mysql:8.0
+```
+
+查看镜像：
+
+```bash
+docker images
+```
+

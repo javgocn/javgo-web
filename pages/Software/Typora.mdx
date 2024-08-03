@@ -1,0 +1,77 @@
+import PostImg from 'components/PostImg'
+import { LinkCard, LinkCardContainer } from 'components/LinkCard'
+
+# Typora
+
+直接去官方网站下载最新版：
+
+<LinkCardContainer>
+    <LinkCard
+        title="Typora 中文站"
+        description="Typora：一款 Markdown 编辑器和阅读器。"
+        imageUrl="https://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web20240803174712.png"
+        href="https://typoraio.cn/"
+    />
+</LinkCardContainer>
+
+<PostImg src="https://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web20240803174712.png" />
+
+下载完成后直接点击安装即可。然后在安装目录中打开下述文件：
+
+```bash
+resources\page-dist\static\js\LicenseIndex.**********.********.chunk.js
+```
+
+Ctrl + F 查找如下内容：
+
+``bash
+e.hasActivated="true"==e.hasActivated,
+```
+
+将其替换为：
+
+```bash
+e.hasActivated="true"=="true",
+```
+
+> TIP: 如果保存失败，可以先将其保存在桌面，然后拖入进行覆盖。
+
+再打开下述文件：
+
+```bash
+resources\page-dist\license.html
+```
+
+Ctrl + F 查找如下内容：
+
+```bash
+</body></html>
+```
+
+将其替换为：
+
+```bash
+</body><script>window.onload=function(){setTimeout(()=>{window.close();},5);}</script></html>
+```
+
+再打开下述文件：
+
+```bash
+resources\locales\zh-Hans.lproj\Panel.json
+```
+
+Ctrl + F 查找如下内容：
+
+```bash
+"UNREGISTERED":"未激活",
+```
+
+将其替换为：
+
+```bash
+"UNREGISTERED":" ",
+```
+
+激活后的 Typora，各种功能均能正常使用，仅有“许可证信息”/“我的许可证”页面无法打开、左下角存在“x”（可手工点击关闭但重新打开软件会重新出现）。如果弹窗提示错误，就点击一下下图中的位置，再关闭浏览器就行了。
+
+<PostImg src="https://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web20240803175040.png" />
