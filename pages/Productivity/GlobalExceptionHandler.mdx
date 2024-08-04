@@ -1,0 +1,82 @@
+# 全局异常处理
+
+Github 仓库代码位置：
+
+* [UserViewException.java](https://github.com/javgocn/javgo-utils/blob/release/src/main/java/cn/javgo/utils/exception/UserViewException.java)
+* [GlobalExceptionHandler.java](https://github.com/javgocn/javgo-utils/blob/release/src/main/java/cn/javgo/utils/exception/GlobalExceptionHandler.java)
+
+## 自定义异常
+
+```java
+package cn.javgo.utils.exception;
+
+/**
+ * Desc: 自定义用户可见异常类，抛出该类异常的 controller 会被类 MethodMonitor 进行拦截, 并把异常信息抛给用户看
+ *
+ * @author javgo
+ * @create 2024-08-04 22:37
+ */
+public class UserViewException extends RuntimeException {
+
+    public UserViewException() {
+        super();
+    }
+
+    public UserViewException(String message) {
+        super(message);
+    }
+
+    public UserViewException(Throwable cause) {
+        super(cause);
+    }
+
+    public UserViewException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+```
+
+## 全局异常处理
+
+```java
+package cn.javgo.utils.exception;
+
+import cn.javgo.utils.common.ApiResponse;
+import cn.javgo.utils.common.enums.StatusCode;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+/**
+ * Desc: 全局异常处理器, 捕获并处理所有未处理的异常。
+ *
+ * @author javgo
+ * @create 2024-08-04 22:08
+ */
+@Slf4j
+@RestControllerAdvice // 标识为全局异常处理器
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(Exception.class)
+    @ResponseBody
+    public ApiResponse<Object> handleException(Exception e) {
+        log.error("系统异常: {}", e.getMessage());
+        return ApiResponse.fail(StatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    @ResponseBody
+    public ApiResponse<Object> handleRuntimeException(RuntimeException e) {
+        log.error("运行时异常: {}", e.getMessage());
+        return ApiResponse.fail(StatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+
+    @ExceptionHandler(UserViewException.class)
+    @ResponseBody
+    public ApiResponse<Object> handleUserViewException(UserViewException e) {
+        log.error("用户可见的请求异常: {}", e.getMessage());
+        return ApiResponse.fail(StatusCode.USER_VIEW_FAIL, e.getMessage());
+    }
+}
+```
