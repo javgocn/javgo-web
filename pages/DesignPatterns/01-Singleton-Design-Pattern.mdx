@@ -1,0 +1,1295 @@
+# 单例模式 - Singleton Design Pattern
+
+带着以下几个问题开始：
+
+1. 为什么要使用单例？
+2. 单例存在哪些问题？
+3. 单例与静态类的区别？
+4. 有何替代的解决方案？
+
+## 为什么要使用单例？
+
+单例设计模式（Singleton Design Pattern）理解起来非常简单。一个类只允许创建一个对象（或者实例），那这个类就是一个单例类，这种设计模式就叫作单例设计模式，简称单例模式。
+
+我们重点看一下，为什么我们需要单例这种设计模式？它能解决哪些问题？
+
+## 案例一：处理资源访问冲突
+
+们先来看第一个例子。在这个例子中，我们自定义实现了一个往文件中打印日志的 Logger 类。具体的代码实现如下所示：
+
+```java
+/**
+ * Desc: 日志类
+ *
+ * @author javgo
+ * @create 2024-08-04 13:54
+ */
+public class Logger {
+
+    private FileWriter writer;
+
+    public Logger()  {
+        try {
+            File file = new File("singleton/log.txt");
+            writer = new FileWriter(file, true); // true表示追加写入
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void log(String message) {
+        try {
+            writer.write(message);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+```java
+/**
+ * Desc: Logger类的应用示例
+ *
+ * @author javgo
+ * @create 2024-08-04 13:57
+ */
+public class UserController {
+
+    private Logger logger = new Logger();
+
+    public void login(String username, String password) {
+        // ...省略业务逻辑代码...
+        logger.log("用户 " + username + " 登录成功！");
+    }
+}
+```
+
+```java
+/**
+ * Desc: Logger类的应用示例
+ *
+ * @author javgo
+ * @create 2024-08-04 14:02
+ */
+public class OrderController {
+
+    private Logger logger = new Logger();
+
+    public void create(OrderVo order) {
+        // ...省略业务逻辑代码...
+        logger.log("Created an order: " + order.toString());
+    }
+}
+
+/**
+ * Desc: 测试订单 VO
+ *
+ * @author javgo
+ * @create 2024-08-04 14:02
+ */
+public class OrderVo {
+
+    private String orderId;
+
+    public String getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(String orderId) {
+        this.orderId = orderId;
+    }
+}
+```
+
+你可以先思考一下，这段代码存在什么问题。
+
+在上面的代码中，所有的日志都写入到同一个文件 `singleton/log.txt` 中。在 `UserController` 和 `OrderController` 中，我们分别创建了两个 `Logger` 对象。在 Web 容器的 Servlet 多线程环境下，如果两个 Servlet 线程同时分别执行 `login()` 和 `create()` 两个函数，并且同时写日志到 log.txt 文件中，那就有可能存在日志信息互相覆盖的情况。
+
+为了避免资源竞争，我们最先想到的就是通过加锁的方式：给 `log()` 函数加互斥锁（Java 中可以通过 `synchronized` 关键字），同一时刻只允许一个线程调用执行 `log()` 函数。具体的代码实现如下所示：
+
+```java
+/**
+ * Desc: 日志类
+ *
+ * @author javgo
+ * @create 2024-08-04 13:54
+ */
+public class Logger {
+
+    private FileWriter writer;
+
+    public Logger()  {
+        try {
+            File file = new File("singleton/log.txt");
+            writer = new FileWriter(file, true); // true表示追加写入
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void log(String message) {
+        try {
+            synchronized (this) { // 同步写日志
+                writer.write(message);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+不过，你仔细想想，这真的能解决多线程写入日志时互相覆盖的问题吗？答案是否定的。这是因为，这种锁是一个对象级别的锁，一个对象在不同的线程下同时调用 `log()` 函数，会被强制要求顺序执行。但是，不同的对象之间并不共享同一把锁。在不同的线程下，通过不同的对象调用执行 `log()` 函数，锁并不会起作用，仍然有可能存在写入日志互相覆盖的问题。
+
+为了更好地解决这个问题，我们可以把对象级别的锁，换成类级别的锁。让所有的对象都共享同一把锁。这样就避免了不同对象之间同时调用 `log()` 函数，而导致的日志覆盖问题。具体的代码实现如下所示：
+
+```java
+/**
+ * Desc: 日志类
+ *
+ * @author javgo
+ * @create 2024-08-04 13:54
+ */
+public class Logger {
+
+    private FileWriter writer;
+
+    public Logger()  {
+        try {
+            File file = new File("singleton/log.txt");
+            writer = new FileWriter(file, true); // true表示追加写入
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void log(String message) {
+        try {
+            // synchronized (this) { // 同步写日志(对象锁)
+            synchronized (Logger.class) { // 同步写日志(类锁)
+                writer.write(message);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+除了使用类级别锁之外，实际上，解决资源竞争问题的办法还有很多。分布式锁是最常听到的一种解决方案，不过实现一个安全可靠、无bug、高性能的分布式锁，并不是件容易的事情。除此之外，并发队列（比如 Java 中的 `BlockingQueue`）也可以解决这个问题：多个线程同时往并发队列里写日志，一个单独的线程负责将并发队列中的数据写入到日志文件。这种方式实现起来也稍微有点复杂。
+
+相对于这两种解决方案，单例模式的解决思路就简单一些了。单例模式相对于之前类级别锁的好处是，不用创建那么多 `Logger` 对象，一方面节省内存空间，另一方面节省系统文件句柄（对于操作系统来说，文件句柄也是一种资源，不能随便浪费）。
+
+我们将 `Logger` 设计成一个单例类，程序中只允许创建一个 `Logger` 对象，所有的线程共享使用这一个 `Logger` 对象，共享一个 `FileWriter` 对象，而 `FileWriter` 本身是对象级别线程安全的，也就避免了多线程情况下写日志会互相覆盖的问题。按照这个设计思路，我们实现了 `Logger` 单例类。具体代码如下所示：
+
+```java
+/**
+ * Desc: 日志类
+ *
+ * @author javgo
+ * @create 2024-08-04 13:54
+ */
+public class Logger {
+
+    private FileWriter writer;
+
+    private static final Logger instance = new Logger(); // 单例
+
+    public Logger()  {
+        try {
+            File file = new File("singleton/log.txt");
+            writer = new FileWriter(file, true); // true表示追加写入
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 获取单例
+     */
+    public static Logger getInstance() {
+        return instance;
+    }
+
+    public void log(String message) {
+        try {
+            // synchronized (this) { // 同步写日志(对象锁)
+//            synchronized (Logger.class) { // 同步写日志(类锁)
+//                writer.write(message);
+//            }
+            writer.write(message);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+```java
+/**
+ * Desc: Logger类的应用示例
+ *
+ * @author javgo
+ * @create 2024-08-04 13:57
+ */
+public class UserController {
+
+//    private Logger logger = new Logger();
+
+    public void login(String username, String password) {
+        // ...省略业务逻辑代码...
+//        logger.log("用户 " + username + " 登录成功！");
+
+        Logger.getInstance().log("用户 " + username + " 登录成功！");
+    }
+}
+```
+
+```java
+/**
+ * Desc: Logger类的应用示例
+ *
+ * @author javgo
+ * @create 2024-08-04 14:02
+ */
+public class OrderController {
+
+//    private Logger logger = new Logger();
+
+    public void create(OrderVo order) {
+        // ...省略业务逻辑代码...
+//        logger.log("Created an order: " + order.toString());
+
+        Logger.getInstance().log("Created an order: " + order.toString());
+    }
+}
+```
+
+通过单例模式，我们确保了所有线程都使用同一个 `Logger` 实例，从而避免了日志文件的资源竞争问题。
+
+## 案例二：表示全局唯一类
+
+从业务概念上来看，如果有些数据在系统中只应保存一份，那它就非常适合设计为单例类。
+
+比如，配置信息类。在系统中，我们通常只有一个配置文件。当配置文件被加载到内存之后，它以对象的形式存在，也理所应当只有一份。
+
+再比如，唯一递增ID号码生成器，如果程序中有两个对象，那就会存在生成重复ID的情况，所以，我们应该将ID生成器类设计为单例。
+
+下面是唯一递增ID生成器的实现：
+
+```java
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
+import java.util.concurrent.atomic.AtomicLong;
+
+/**
+ * Desc: 唯一递增ID生成器
+ *
+ * @author javgo
+ * @create 2024-08-04 14:20
+ */
+@NoArgsConstructor(access = AccessLevel.PRIVATE) // 禁止外部实例化
+public class IdGenerator {
+
+    private AtomicLong id = new AtomicLong(0);
+
+    private static final IdGenerator instance = new IdGenerator();
+
+    public static IdGenerator getInstance() {
+        return instance;
+    }
+
+    public long getId() {
+        return id.incrementAndGet();
+    }
+}
+
+// IdGenerator使用举例
+long id = IdGenerator.getInstance().getId();
+```
+
+> TIP: `AtomicLong` 是一个 Java 并发库中提供的一个原子变量类型, 它将一些线程不安全需要加锁的复合操作封装为了线程安全的原子操作，比如上面用到的 `incrementAndGet()`。
+
+在这个例子中，我们通过单例模式确保系统中唯一递增ID生成器只有一个实例，从而避免了生成重复ID的情况。
+
+实际上，上面讲到的两个代码实例（`Logger` 和 `IdGenerator`），设计的都并不优雅，还存在一些问题。
+
+## 单例模式的实现方式
+
+概括起来，要实现一个单例，我们需要关注以下几个点：
+
+* 构造函数需要是 `private` 访问权限，这样才能避免外部通过 `new` 创建实例；
+* 考虑对象创建时的线程安全问题；
+* 考虑是否支持延迟加载；
+* 考虑 `getInstance()` 性能是否高（是否加锁）。
+
+### 饿汉式
+
+饿汉式的实现方式比较简单。在类加载的时候，`instance` 静态实例就已经创建并初始化好了，所以，`instance` 实例的创建过程是线程安全的。不过，这样的实现方式不支持延迟加载（在真正用到 `IdGenerator` 的时候，再创建实例），从名字中我们也可以看出这一点。具体的代码实现如下所示：
+
+```java
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
+import java.util.concurrent.atomic.AtomicLong;
+
+/**
+ * Desc: 饿汉式
+ *
+ * @author javgo
+ * @create 2024-08-04 14:27
+ */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public class IdGenerator01 {
+
+  private AtomicLong id = new AtomicLong(0);
+
+  // 饿汉式：类加载时就初始化实例
+  private static final IdGenerator01 instance = new IdGenerator01();
+
+  public static IdGenerator01 getInstance() {
+      return instance;
+  }
+
+  public long getId() {
+      return id.incrementAndGet();
+  }
+}
+```
+
+有人觉得这种实现方式不好，因为不支持延迟加载。如果实例占用资源多（比如占用内存多）或初始化耗时长（比如需要加载各种配置文件），提前初始化实例是一种浪费资源的行为。最好的方法应该在用到的时候再去初始化。不过，我个人并不认同这样的观点。
+
+如果初始化耗时长，那我们最好不要等到真正要用它的时候，才去执行这个耗时长的初始化过程，这会影响到系统的性能（比如，在响应客户端接口请求的时候，做这个初始化操作，会导致此请求的响应时间变长，甚至超时）。采用饿汉式实现方式，将耗时的初始化操作，提前到程序启动的时候完成，这样就能避免在程序运行的时候，再去初始化导致的性能问题。
+
+如果实例占用资源多，按照 fail-fast 的设计原则（有问题及早暴露），我们也希望在程序启动时就将这个实例初始化好。如果资源不够，就会在程序启动的时候触发报错（比如 Java 中的 PermGen Space OOM），我们可以立即去修复。这样也能避免在程序运行一段时间后，突然因为初始化这个实例占用资源过多，导致系统崩溃，影响系统的可用性。
+
+### 懒汉式
+
+有饿汉式，对应的就有懒汉式。懒汉式相对于饿汉式的优势是支持延迟加载。具体的代码实现如下所示：
+
+```java
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
+import java.util.concurrent.atomic.AtomicLong;
+
+/**
+ * Desc: 懒汉式
+ *
+ * @author javgo
+ * @create 2024-08-04 14:33
+ */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public class IdGenerator02 {
+
+    private AtomicLong id = new AtomicLong(0);
+
+    // 懒汉式: 延迟加载
+    private static IdGenerator02 instance;
+
+    public static synchronized IdGenerator02 getInstance() {
+        if (instance == null) {
+            instance = new IdGenerator02();
+        }
+        return instance;
+    }
+
+    public long getId() {
+        return id.incrementAndGet();
+    }
+}
+```
+
+懒汉式的缺点也很明显。我们给 `getInstance()` 这个方法加了一把大锁（`synchronized`），导致这个函数的并发度很低。量化一下的话，并发度是1，也就相当于串行操作了。而这个函数在单例使用期间，一直会被调用。如果这个单例类偶尔会被用到，那这种实现方式还可以接受。但是，如果频繁地用到，频繁加锁、释放锁及并发度低等问题会导致性能瓶颈，这种实现方式就不可取了。
+
+### 双重检测
+
+饿汉式不支持延迟加载，懒汉式有性能问题，不支持高并发。那我们再来看一种既支持延迟加载、又支持高并发的单例实现方式，也就是双重检测实现方式。
+
+在这种实现方式中，只要 `instance` 被创建之后，即便再调用 `getInstance()` 函数也不会再进入到加锁逻辑中了。所以，这种实现方式解决了懒汉式并发度低的问题。具体的代码实现如下所示：
+
+```java
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
+import java.util.concurrent.atomic.AtomicLong;
+
+/**
+ * Desc: 双重检测
+ *
+ * @author javgo
+ * @create 2024-08-04 14:39
+ */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public class IdGenerator03 {
+
+    private AtomicLong id = new AtomicLong(0);
+
+    // 双重检测: volatile 禁止指令重排序
+    private static volatile IdGenerator03 instance;
+
+    public static IdGenerator03 getInstance() {
+        if (instance == null) {
+            synchronized (IdGenerator03.class) { // 类级别的锁
+                if (instance == null) {
+                    instance = new IdGenerator03();
+                }
+            }
+        }
+        return instance;
+    }
+
+    public long getId() {
+        return id.incrementAndGet();
+    }
+}
+```
+
+实际上，上述实现方式存在问题：CPU 指令重排序可能导致在 `IdGenerator` 类的对象被关键字 `new` 创建并赋值给 `instance` 之后，还没来得及初始化（执行构造函数中的代码逻辑），就被另一个线程使用了。这样，另一个线程就**使用了一个没有完整初始化的 `IdGenerator` 类的对象**。要解决这个问题，我们只需要给 `instance` 成员变量添加 `volatile` 关键字来禁止指令重排序即可。
+
+### 静态内部类
+
+我们再来看一种比双重检测更加简单的实现方法，那就是利用 Java 的静态内部类。它有点类似饿汉式，但又能做到延迟加载。具体是怎么做到的呢？我们先来看它的代码实现。
+
+```java
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
+import java.util.concurrent.atomic.AtomicLong;
+
+/**
+ * Desc: 静态内部类
+ *
+ * @author javgo
+ * @create 2024-08-04 14:44
+ */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public class IdGenerator04 {
+
+    private AtomicLong id = new AtomicLong(0);
+
+    private static class SingletonHolder {
+        private static final IdGenerator04 instance = new IdGenerator04();
+    }
+
+    public static IdGenerator04 getInstance() {
+        return SingletonHolder.instance;
+    }
+
+    public long getId() {
+        return id.incrementAndGet();
+    }
+}
+```
+
+`zSingletonHolder` 是一个静态内部类。当外部类 `IdGenerator` 被加载的时候，并不会创建 `SingletonHolder` 实例对象。只有当调用 `getInstance()` 方法时，`SingletonHolder` 才会被加载，这个时候才会创建 `instance`。`instance` 的唯一性、创建过程的线程安全性，都由 JVM 来保证。所以，这种实现方法既保证了线程安全，又能做到延迟加载。
+
+### 枚举
+
+最后，我们介绍一种最简单的实现方式，基于枚举类型的单例实现。这种实现方式通过 Java 枚举类型本身的特性，保证了实例创建的线程安全性和实例的唯一性。具体的代码如下所示：
+
+```java
+import java.util.concurrent.atomic.AtomicLong;
+
+/**
+ * Desc: 枚举
+ *
+ * @author javgo
+ * @create 2024-08-04 14:48
+ */
+public enum IdGenerator05 {
+
+    INSTANCE;
+
+    private AtomicLong id = new AtomicLong(0);
+
+    public long getId() {
+        return id.incrementAndGet();
+    }
+}
+```
+
+总结一下，我们介绍了五种实现单例模式的方式，每种方式各有优劣。选择合适的单例模式实现方式，需要根据具体的使用场景进行权衡。
+
+以下是五种单例模式实现方式的对比表：
+
+| 实现方式 | 是否支持延迟加载 | 是否线程安全 | 实现难度 | 优点 | 缺点 |
+| --- | --- | --- | --- | --- | --- |
+| 饿汉式 | 否 | 是 | 简单 | 线程安全，延迟加载 | 浪费内存 |
+| 懒汉式 | 是 | 否 | 中等 | 线程不安全，延迟加载 | 性能问题 |
+| 双重检测 | 是 | 是 | 高 | 线程安全，延迟加载 | 性能问题 |
+| 静态内部类 | 是 | 是 | 简单 | 线程安全，延迟加载 | 浪费内存 |
+| 枚举 | 是 | 是 | 简单 | 线程安全，延迟加载 | 无 |
+
+## 为什么不推荐使用单例模式？
+
+前面，尽管单例是一个很常用的设计模式，在实际的开发中，我们也确实经常用到它，但是，有些人认为单例是一种反模式（anti-pattern），并不推荐使用。那么，单例这种设计模式存在哪些问题？为什么会被称为反模式？如果不用单例，该如何表示全局唯一类？有何替代的解决方案？
+
+### 单例存在哪些问题？
+
+大部分情况下，我们在项目中使用单例，都是用它来表示一些全局唯一类，比如配置信息类、连接池类、ID生成器类。单例模式书写简洁、使用方便，在代码中，我们不需要创建对象，直接通过类似 `IdGenerator.getInstance().getId()` 这样的方法来调用就可以了。但是，这种使用方法有点类似硬编码（hard code），会带来诸多问题。接下来，我们就具体看看到底有哪些问题。
+
+#### 对OOP特性的支持不友好
+
+我们知道，OOP的四大特性是封装、抽象、继承、多态。单例这种设计模式对于其中的抽象、继承、多态都支持得不好。为什么这么说呢？我们还是通过 `IdGenerator` 这个例子来讲解。
+
+```java
+public class Order {
+
+    public void create(String param) {
+        // ...
+        long id = IdGenerator.getInstance().getId();
+        // ...
+    }
+}
+
+public class User {
+
+    public void create(String param) {
+        // ...
+        long id = IdGenerator.getInstance().getId();
+        // ...
+    }
+}
+```
+
+`IdGenerator` 的使用方式**违背了基于接口而非实现的设计原则，也就违背了广义上理解的OOP的抽象特性**。如果未来某一天，我们希望针对不同的业务采用不同的ID生成算法，比如，订单ID和用户ID采用不同的ID生成器来生成。为了应对这个需求变化，我们需要修改所有用到 `IdGenerator` 类的地方，这样代码的改动就会比较大。
+
+```java
+public class Order {
+
+    public void create(String param) {
+        // ...
+        long id = IdGenerator.getInstance().getId();
+        // 需要将上面一行代码，替换为下面一行代码
+        long id2 = OrderIdGenerator.getInstance().getId();
+        // ...
+    }
+}
+
+public class User {
+
+    public void create(String param) {
+        // ...
+        long id = IdGenerator.getInstance().getId();
+        // 需要将上面一行代码，替换为下面一行代码
+        long id2 = UserIdGenerator.getInstance().getId();
+        // ...
+    }
+}
+```
+
+除此之外，单例对继承、多态特性的支持也不友好。这里我之所以会用 “不友好” 这个词，而非 “完全不支持”，是因为从理论上来讲，单例类也可以被继承、也可以实现多态，只是实现起来会非常奇怪，会导致代码的可读性变差。不明白设计意图的人，看到这样的设计，会觉得莫名其妙。所以，一旦你选择将某个类设计成单例类，也就意味着放弃了继承和多态这两个强有力的面向对象特性，也就相当于损失了可以应对未来需求变化的扩展性。
+
+#### 会隐藏类之间的依赖关系
+
+我们知道，代码的可读性非常重要。在阅读代码的时候，我们希望一眼就能看出类与类之间的依赖关系，搞清楚这个类依赖了哪些外部类。
+
+通过构造函数、参数传递等方式声明的类之间的依赖关系，我们通过查看函数的定义，就能很容易识别出来。但是，单例类不需要显式创建、不需要依赖参数传递，在函数中直接调用就可以了。如果代码比较复杂，这种调用关系就会非常隐蔽。在阅读代码的时候，我们就需要仔细查看每个函数的代码实现，才能知道这个类到底依赖了哪些单例类。
+
+#### 对代码的扩展性不友好
+
+我们知道，单例类只能有一个对象实例。如果未来某一天，我们需要在代码中创建两个实例或多个实例，那就要对代码有比较大的改动。你可能会说，会有这样的需求吗？既然单例类大部分情况下都用来表示全局类，怎么会需要两个或者多个实例呢？
+
+实际上，这样的需求并不少见。我们拿数据库连接池来举例解释一下。
+
+在系统设计初期，我们觉得系统中只应该有一个数据库连接池，这样能方便我们控制对数据库连接资源的消耗。所以，我们把数据库连接池类设计成了单例类。但之后我们发现，系统中有些SQL语句运行得非常慢。这些SQL语句在执行的时候，长时间占用数据库连接资源，导致其他SQL请求无法响应。为了解决这个问题，我们希望将慢SQL与其他SQL隔离开来执行。为了实现这样的目的，我们可以在系统中创建两个数据库连接池，慢SQL独享一个数据库连接池，其他SQL独享另外一个数据库连接池，这样就能避免慢SQL影响到其他SQL的执行。
+
+如果我们将数据库连接池设计成单例类，显然就无法适应这样的需求变更，也就是说，单例类在某些情况下会影响代码的扩展性、灵活性。所以，数据库连接池、线程池这类的资源池，最好还是不要设计成单例类。实际上，一些开源的数据库连接池、线程池也确实没有设计成单例类。
+
+#### 对代码的可测试性不友好
+
+单例模式的使用会影响到代码的可测试性。如果单例类依赖比较重的外部资源，比如数据库，我们在写单元测试的时候，希望能通过 mock 的方式将它替换掉。而单例类这种硬编码式的使用方式，导致无法实现 mock 替换。
+
+除此之外，如果单例类持有成员变量（比如 `IdGenerator` 中的 `id` 成员变量），那它实际上相当于一种全局变量，被所有的代码共享。如果这个全局变量是一个可变全局变量，也就是说，它的成员变量是可以被修改的，那我们在编写单元测试的时候，还需要注意不同测试用例之间，修改了单例类中的同一个成员变量的值，从而导致测试结果互相影响的问题。
+
+#### 不支持有参数的构造函数
+
+单例不支持有参数的构造函数，比如我们创建一个连接池的单例对象，没法通过参数来指定连接池的大小。针对这个问题，我们来看下都有哪些解决方案。
+
+**使用 init() 方法初始化:**
+
+这种方式在创建完实例之后，再调用 `init()` 函数传递参数。使用这个单例类时，要先调用 `init()` 方法，然后才能调用 `getInstance()` 方法，否则代码会抛出异常。
+
+```java
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+
+/**
+ * Desc: 使用 init() 方法初始化
+ *
+ * @author javgo
+ * @create 2024-08-04 15:27
+ */
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class Singleton01 {
+
+    private static Singleton01 instance = null;
+
+    private final int paramA;
+    private final int paramB;
+
+    public static Singleton01 getInstance() {
+        // 必须先初始化，否则会抛出异常
+        if (instance == null) {
+            throw new RuntimeException("Run init() first.");
+        }
+        return instance;
+    }
+
+    // 这里使用 synchronized 关键字保证线程安全，避免竞争初始化
+    public synchronized static Singleton01 init(int paramA, int paramB) {
+        if (instance != null) {
+            throw new RuntimeException("Singleton has been created!");
+        }
+
+        instance = new Singleton01(paramA, paramB);
+        return instance;
+    }
+}
+```
+
+**在 getInstance() 方法中传递参数:**
+
+将参数放到 `getInstance()` 方法中。
+
+```java
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+
+/**
+ * Desc: 在 getInstance() 方法中传递参数
+ *
+ * @author javgo
+ * @create 2024-08-04 15:27
+ */
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class Singleton02 {
+
+    private static Singleton02 instance = null;
+
+    private final int paramA;
+    private final int paramB;
+
+    public static Singleton02 getInstance(int paramA, int paramB) {
+        if (instance == null) {
+            instance = new Singleton02(paramA, paramB);
+        }
+        return instance;
+    }
+}
+```
+
+这种实现有个问题，如果两次调用 `getInstance()` 方法，第二次的参数没有起作用，并且没有提示，这会误导用户。
+
+```java
+Singleton02 singleton1 = Singleton02.getInstance(10, 50);
+Singleton02 singleton2 = Singleton02.getInstance(20, 30);
+```
+
+**使用全局变量存储参数:**
+
+将参数放到全局变量中。`Config` 是一个存储了 `paramA` 和 `paramB` 值的全局变量，值可以通过静态常量定义，也可以从配置文件中加载得到。
+
+```java
+public class Config {
+
+    public static final int PARAM_A = 123;
+    public static final int PARAM_B = 245;
+}
+
+public class Singleton03 {
+
+    private static Singleton03 instance = null;
+
+    private final int paramA;
+    private final int paramB;
+
+    private Singleton03() {
+        this.paramA = Config.PARAM_A;
+        this.paramB = Config.PARAM_B;
+    }
+
+    public static Singleton03 getInstance(int paramA, int paramB) {
+        if (instance == null) {
+            instance = new Singleton03();
+        }
+        return instance;
+    }
+}
+```
+
+### 有何替代解决方案？
+
+#### 静态方法
+
+为了保证全局唯一，可以用静态方法来实现。
+
+```java
+/**
+ * Desc: 静态方法
+ *
+ * @author javgo
+ * @create 2024-08-04 15:35
+ */
+public class IdGenerator {
+
+    private static AtomicLong id = new AtomicLong(0);
+
+    public static long getId() {
+        return id.incrementAndGet();
+    }
+}
+
+// 使用举例
+long id = IdGenerator.getId();
+```
+
+但是静态方法比单例更不灵活，无法支持延迟加载。
+
+#### 依赖注入
+
+通过依赖注入（DI），将对象的创建和依赖关系的管理交给容器。依赖注入可以解决单例模式的一些问题，比如隐藏依赖关系、可测试性差等。
+
+```java
+import org.springframework.stereotype.Component;
+
+import java.util.concurrent.atomic.AtomicLong;
+
+/**
+ * Desc: 依赖注入
+ *
+ * @author javgo
+ * @create 2024-08-04 15:38
+ */
+@Component
+public class IdGenerator {
+
+    private AtomicLong id = new AtomicLong(0);
+
+    public long getId() {
+        return id.incrementAndGet();
+    }
+}
+
+/**
+ * Desc: 订单类
+ *
+ * @author javgo
+ * @create 2024-08-04 15:39
+ */
+@Component
+public class Order {
+
+    private final IdGenerator idGenerator;
+
+    @Autowired
+    public Order(IdGenerator idGenerator) {
+        this.idGenerator = idGenerator;
+    }
+
+    public void create(String param) {
+        long id = idGenerator.getId();
+        // ...
+    }
+}
+```
+
+#### 服务定位器
+
+服务定位器（Service Locator）提供了一种从中央注册表中查找服务的方式，可以将单例类注册到服务定位器中，通过服务定位器来获取单例实例。
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Desc: 服务定位器
+ *
+ * @author javgo
+ * @create 2024-08-04 15:42
+ */
+public class ServiceLocator {
+
+    // 服务注册表
+    private static final Map<Class<?>, Object> services = new HashMap<>();
+
+    // 注册服务
+    public static <T> void registerService(Class<T> serviceClass, T serviceInstance) {
+        services.put(serviceClass, serviceInstance);
+    }
+
+    // 获取服务
+    public static <T> T getService(Class<T> serviceClass) {
+        // 将服务转换为指定类型的实例
+        return serviceClass.cast(services.get(serviceClass));
+    }
+}
+```
+
+```java
+// 使用举例
+// 注册服务
+IdGenerator idGenerator = new IdGenerator();
+ServiceLocator.registerService(IdGenerator.class, idGenerator);
+
+// 获取服务
+IdGenerator retrievedIdGenerator = ServiceLocator.getService(IdGenerator.class);
+long id = retrievedIdGenerator.getId();
+```
+
+#### 参数传递
+
+将单例生成的对象作为参数传递给函数（也可以通过构造函数传递给类的成员变量），可以解决单例隐藏类之间依赖关系的问题。
+
+```java
+// 老的使用方式
+public void demoFunction() {
+  // ...
+  long id = IdGenerator.getInstance().getId();
+  // ...
+}
+
+// 新的使用方式：依赖注入
+public void demoFunction(IdGenerator idGenerator) {
+  long id = idGenerator.getId();
+  // ...
+}
+
+// 外部调用 demoFunction() 的时候，传入 idGenerator
+IdGenerator idGenerator = IdGenerator.getInstance();
+demoFunction(idGenerator);
+```
+
+以上方法都可以在一定程度上替代单例模式，解决单例存在的一些问题。具体选择哪种方法，需根据具体场景和需求进行权衡。
+
+## 如何设计一个集群环境下的分布式单例模式？
+
+前面，我们针对单例模式，讲解了单例的应用场景、几种常见的代码实现和存在的问题，并粗略给出了替换单例模式的方法，比如工厂模式、IOC容器。我们再关注如下几个问题：
+
+1. 如何理解单例模式中的唯一性？
+2. 如何实现线程唯一的单例？
+3. 如何实现集群环境下的单例？
+4. 如何实现一个多例模式？
+
+### 如何理解单例模式中的唯一性？
+
+首先，我们重新看一下单例的定义：“一个类只允许创建唯一一个对象（或者实例），那这个类就是一个单例类，这种设计模式就叫作单例模式，简称单例模式。”
+
+定义中提到，“一个类只允许创建唯一一个对象”。那对象的唯一性的作用范围是什么呢？是指线程内只允许创建一个对象，还是指进程内只允许创建一个对象？答案是后者，也就是说，**单例模式创建的对象是进程唯一的**。这里有点不好理解，我来详细地解释一下。
+
+我们编写的代码，通过编译、链接，组织在一起，就构成了一个操作系统可以执行的文件，也就是我们平时所说的 “可执行文件”（比如 Windows 下的 exe 文件）。可执行文件实际上就是代码被翻译成操作系统可理解的一组指令，你完全可以简单地理解为就是代码本身。
+
+当我们使用命令行或者双击运行这个可执行文件的时候，操作系统会启动一个进程，将这个执行文件从磁盘加载到自己的进程地址空间（可以理解操作系统为进程分配的内存存储区，用来存储代码和数据）。接着，进程就一条一条地执行可执行文件中包含的代码。比如，当进程读到代码中的 `User user = new User();` 这条语句的时候，它就在自己的地址空间中创建一个 `user` 临时变量和一个 `User` 对象。
+
+进程之间是不共享地址空间的，如果我们在一个进程中创建另外一个进程（比如，代码中有一个fork()语句，进程执行到这条语句的时候会创建一个新的进程），操作系统会给新进程分配新的地址空间，并且将老进程地址空间的所有内容，重新拷贝一份到新进程的地址空间中，这些内容包括代码、数据（比如 `user` 临时变量、`User` 对象）。
+
+所以，单例类在老进程中存在且只能存在一个对象，在新进程中也会存在且只能存在一个对象。而且，这两个对象并不是同一个对象，这也就说，单例类中对象的唯一性的作用范围是进程内的，在进程间是不唯一的。
+
+### 如何实现线程唯一的单例？
+
+刚刚我们讲了单例类对象是进程唯一的，一个进程只能有一个单例对象。那如何实现一个线程唯一的单例呢？
+
+我们先来看一下，什么是线程唯一的单例，以及 “线程唯一” 和 “进程唯一” 的区别。
+
+“进程唯一” 指的是进程内唯一，进程间不唯一。类比一下，“线程唯一” 指的是线程内唯一，线程间可以不唯一。实际上，**“进程唯一” 还代表了线程内、线程间都唯一**，这也是 “进程唯一” 和 “线程唯一” 的区别之处。这段话听起来有点像绕口令，我举个例子来解释一下。
+
+假设 `IdGenerator` 是一个线程唯一的单例类。在线程 A 内，我们可以创建一个单例对象 a。因为线程内唯一，在线程 A 内就不能再创建新的 `IdGenerator` 对象了，而线程间可以不唯一，所以，在另外一个线程 B 内，我们还可以重新创建一个新的单例对象 b。
+
+尽管概念理解起来比较复杂，但线程唯一单例的代码实现很简单，如下所示。在代码中，我们通过一个 `HashMap` 来存储对象，其中 `key` 是线程ID，`value` 是对象。这样我们就可以做到，不同的线程对应不同的对象，同一个线程只能对应一个对象。实际上，Java 语言本身提供了 `ThreadLocal` 工具类，可以更加轻松地实现线程唯一单例。不过，`ThreadLocal` 底层实现原理也是基于下面代码中所示的 `HashMap`。
+
+```java
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
+/**
+ * Desc: 线程唯一的单例
+ *
+ * @author javgo
+ * @create 2024-08-04 16:01
+ */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public class IdGenerator {
+
+    private AtomicLong id = new AtomicLong(0);
+
+    // 线程安全的单例
+    private static final ConcurrentHashMap<Long, IdGenerator> instances = new ConcurrentHashMap<>();
+
+    public static IdGenerator getInstance() {
+        // 不同线程获取到的是同一个单例
+        long currentThreadId = Thread.currentThread().getId();
+        instances.putIfAbsent(currentThreadId, new IdGenerator());
+        return instances.get(currentThreadId);
+    }
+
+    public long getId() {
+        return id.incrementAndGet();
+    }
+}
+```
+
+### 如何实现集群环境下的单例？
+
+刚刚我们讲了 “进程唯一” 的单例和 “线程唯一” 的单例，现在，我们再来看下，“集群唯一” 的单例。
+
+首先，我们还是先来解释一下，什么是 “集群唯一” 的单例。
+
+我们还是将它跟 “进程唯一” 和 “线程唯一” 做个对比。“进程唯一” 指的是进程内唯一、进程间不唯一。“线程唯一” 指的是线程内唯一、线程间不唯一。集群相当于多个进程构成的一个集合，“集群唯一” 就相当于是进程内唯一、进程间也唯一。也就是说，不同的进程间共享同一个对象，不能创建同一个类的多个对象。
+
+我们知道，经典的单例模式是进程内唯一的，那如何实现一个进程间也唯一的单例呢？如果严格按照不同的进程间共享同一个对象来实现，那集群唯一的单例实现起来就有点难度了。
+
+具体来说，我们需要把这个单例对象序列化并存储到外部共享存储区（比如文件）。进程在使用这个单例对象的时候，需要先从外部共享存储区中将它读取到内存，并反序列化成对象，然后再使用，使用完成之后还需要再存储回外部共享存储区。
+
+**为了保证任何时刻，在进程间都只有一份对象存在，一个进程在获取到对象之后，需要对对象加锁，避免其他进程再将其获取。在进程使用完这个对象之后，还需要显式地将对象从内存中删除，并且释放对对象的加锁。**
+
+按照这个思路，可以用伪代码实现一下这个过程，具体如下所示：
+
+存储共享对象:
+
+```java
+/**
+ * Desc: 存储共享对象
+ *
+ * @author javgo
+ * @create 2024-08-04 16:15
+ */
+public interface SharedObjectStorage {
+
+    /**
+     * 加载共享对象
+     * @param clazz 共享对象类型
+     * @param <T> 共享对象类型
+     * @return 共享对象
+     */
+    <T> T load(Class<T> clazz);
+
+    /**
+     * 保存共享对象
+     *
+     * @param instance 单例
+     * @param clazz 共享对象类型
+     * @param <T> 共享对象类型
+     */
+    <T> void save(T instance, Class<T> clazz);
+}
+```
+
+```java
+import java.io.*;
+
+/**
+ * Desc: 共享对象实现类
+ *
+ * @author javgo
+ * @create 2024-08-04 16:16
+ */
+public class FileSharedObjectStorage implements SharedObjectStorage{
+
+    // 存储路径
+    private String storagePath;
+
+    public FileSharedObjectStorage(String storagePath) {
+        this.storagePath = storagePath;
+    }
+
+    /**
+     * 从存储中加载序列化对象
+     *
+     * @param clazz 要加载的类的类型
+     * @return 序列化对象
+     * @throws RuntimeException 如果无法从存储中加载对象
+     */
+    @Override
+    public <T> T load(Class<T> clazz) {
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(storagePath + "/" + clazz.getSimpleName() + ".ser"))) {
+            // 将对象反序列化为指定类型的对象
+            return clazz.cast(ois.readObject());
+        } catch (IOException | ClassNotFoundException e) {
+            throw new RuntimeException("Failed to load object from storage", e);
+        }
+    }
+
+    /**
+     * 保存对象到存储区
+     *
+     * @param instance 要保存的对象实例
+     * @param clazz 对象实例的类
+     * @param <T> 泛型参数，表示对象的类型
+     *
+     * 该方法通过序列化机制将对象保存到文件中每个类的对象保存在独立的文件中，文件名基于类的简单名称
+     * 如果存储过程中发生IO异常，将抛出运行时异常
+     */
+    @Override
+    public <T> void save(T instance, Class<T> clazz) {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(storagePath + "/" + clazz.getSimpleName() + ".ser"))) {
+            // 将对象序列化为字节流
+            oos.writeObject(instance);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to save object to storage", e);
+        }
+    }
+}
+```
+
+基于 Redis 的简单分布式锁：
+
+```java
+/**
+ * Desc: 分布式锁接口
+ *
+ * @author javgo
+ * @create 2024-08-04 16:21
+ */
+public interface DistributedLock {
+
+    /**
+     * 获取锁
+     */
+    void lock();
+
+    /**
+     * 释放锁
+     */
+    void unlock();
+}
+```
+
+```java
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.params.SetParams;
+
+/**
+ * Desc: 分布式锁实现
+ *
+ * @author javgo
+ * @create 2024-08-04 16:22
+ */
+public class RedisDistributedLock implements DistributedLock{
+
+    // 分布式锁的键
+    private static final String LOCK_KEY = "DistributedLock";
+
+    // 分布式锁的值
+    private static final String LOCK_VALUE = "LOCKED";
+
+    // 分布式锁的过期时间(秒)
+    private static final int EXPIRE_TIME = 60;
+
+    // Redis 客户端
+    private Jedis jedis;
+
+    public RedisDistributedLock(Jedis jedis) {
+        this.jedis = jedis;
+    }
+
+    @Override
+    public void lock() {
+        // 自旋获取锁
+        while (true) {
+            // 获取锁，这里使用 SETNX 命令，如果键不存在则设置键值对，如果键已存在则返回失败
+            String result = jedis.set(LOCK_KEY, LOCK_VALUE, SetParams.setParams().nx().ex(EXPIRE_TIME));
+            if ("OK".equals(result)) {
+                break;
+            }
+
+            try {
+                // 休眠 100ms 再尝试获取锁
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                // 恢复中断: 如果当前线程在等待过程中被中断，则抛出 InterruptedException 异常
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    @Override
+    public void unlock() {
+        // 删除锁
+        jedis.del(LOCK_KEY);
+    }
+}
+```
+
+集群环境下的单例:
+
+```java
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+import redis.clients.jedis.Jedis;
+
+import java.io.Serializable;
+import java.util.concurrent.atomic.AtomicLong;
+
+/**
+ * Desc: 集群环境下的单例
+ *
+ * @author javgo
+ * @create 2024-08-04 16:08
+ */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public class DistributedIdGenerator implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    private AtomicLong id = new AtomicLong(0);
+
+    private static DistributedIdGenerator instance;
+
+    // 存储共享对象
+    private static SharedObjectStorage storage = new FileSharedObjectStorage("/path/to/storage");
+
+    // 分布式锁
+    private static DistributedLock lock = new RedisDistributedLock(new Jedis("localhost"));
+
+    // 获取单例，加分布式锁
+    public synchronized static DistributedIdGenerator getInstance() {
+        if (instance == null) {
+            // 加锁，避免多个线程同时创建
+            lock.lock();
+            try {
+                // 读取共享对象
+                instance = storage.load(DistributedIdGenerator.class);
+                // 如果不存在，则创建（这里再检测一次，因为可能在获取锁的过程中，其他线程创建了实例）
+                if (instance == null) {
+                    instance = new DistributedIdGenerator();
+                }
+            } finally {
+                lock.unlock();
+            }
+        }
+        return instance;
+    }
+
+    // 释放共享对象
+    public synchronized void freeInstance() {
+        // 加锁，避免多个线程同时释放
+        lock.lock();
+        try {
+            // 回存共享对象
+            storage.save(this, DistributedIdGenerator.class);
+            //释放对象
+            instance = null;
+        } finally {
+            // 释放分布式锁
+            lock.unlock();
+        }
+    }
+
+    public long getId() {
+        return id.incrementAndGet();
+    }
+}
+```
+
+使用举例:
+
+```java
+DistributedIdGenerator idGenerator = DistributedIdGenerator.getInstance();
+long id = idGenerator.getId();
+idGenerator.freeInstance(); // 使用完成后释放单例
+```
+
+### 如何实现一个多例模式？
+
+跟单例模式概念相对应的还有一个多例模式。那如何实现一个多例模式呢？
+
+“单例” 指的是，一个类只能创建一个对象。对应地，“多例” 指的就是，一个类可以创建多个对象，但是个数是有限制的，比如只能创建3个对象。如果用代码来简单示例一下的话，就是下面这个样子：
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
+
+/**
+ * Desc: 多例模式
+ *
+ * @author javgo
+ * @create 2024-08-04 16:38
+ */
+public class BackendServer {
+
+    // 实例编号
+    private long serverNo;
+
+    // 实例地址
+    private String serverAddress;
+
+    // 实例数量
+    private static final int SERVER_COUNT = 3;
+
+    // 实例集
+    private static final Map<Long, BackendServer> serverInstances = new HashMap<>();
+
+    // 类加载时初始化实例集
+    static {
+        serverInstances.put(1L, new BackendServer(1L, "192.134.22.138:8080"));
+        serverInstances.put(2L, new BackendServer(2L, "192.134.22.139:8080"));
+        serverInstances.put(3L, new BackendServer(3L, "192.134.22.140:8080"));
+    }
+
+    private BackendServer(long serverNo, String serverAddress) {
+        this.serverNo = serverNo;
+        this.serverAddress = serverAddress;
+    }
+
+    // 获取指定实例
+    public BackendServer getInstance(long serverNo) {
+        return serverInstances.get(serverNo);
+    }
+
+    // 获取随机实例
+    public BackendServer getRandomInstance() {
+        Random r = new Random();
+        int no = r.nextInt(SERVER_COUNT + 1);
+        return serverInstances.get((long) no);
+    }
+}
+```
+
+实际上，对于多例模式，还有一种理解方式：同一类型的只能创建一个对象，不同类型的可以创建多个对象。这里的 “类型” 如何理解呢？
+
+我们还是通过一个例子来解释一下，具体代码如下所示。在代码中，logger name 就是刚刚说的 “类型”，同一个 logger name 获取到的对象实例是相同的，不同的 logger name 获取到的对象实例是不同的。
+
+```java
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Desc: 日志类
+ *
+ * @author javgo
+ * @create 2024-08-04 16:42
+ */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public class Logger {
+
+    // 存储不同类型的日志类的实例
+    private static final ConcurrentHashMap<String, Logger> instance = new ConcurrentHashMap<>();
+
+    public static Logger getInstance(String loggerName) {
+        instance.putIfAbsent(loggerName, new Logger());
+        return instance.get(loggerName);
+    }
+
+    public void log() {
+        //...
+    }
+}
+```
+
+```java
+// l1 == l2, l1 != l3
+Logger l1 = Logger.getInstance("User.class");
+Logger l2 = Logger.getInstance("User.class");
+Logger l3 = Logger.getInstance("Order.class");
+```
+
+这种多例模式的理解方式有点类似工厂模式。它跟工厂模式的不同之处是，多例模式创建的对象都是同一个类的对象，而工厂模式创建的是不同子类的对象。除此之外，实际上，枚举类型也相当于多例模式，一个类型只能对应一个对象，一个类可以创建多个对象。
