@@ -1,0 +1,77 @@
+# Maven
+
+## Linux
+
+> TIP: 本演示环境为 CentOS7 64位。
+
+### 安装必要的软件包
+
+首先，确保你的系统已安装了必要的软件包，如 wget 和 tar。可以使用以下命令进行安装：
+
+```bash
+sudo yum install -y wget tar
+```
+
+### 下载并解压Maven
+
+使用 wget 命令下载 Maven 安装包:
+
+```bash
+wget https://dlcdn.apache.org/maven/maven-3/3.9.8/binaries/apache-maven-3.9.8-bin.tar.gz
+```
+
+将下载的文件解压到 /opt 目录：
+
+```bash
+sudo tar -zxvf apache-maven-3.9.8-bin.tar.gz -C /opt
+```
+
+### 创建符号链接
+
+为方便使用，可以创建一个指向解压目录的符号链接：
+
+```bash
+sudo ln -s /opt/apache-maven-3.9.8 /opt/maven
+```
+
+### 配置环境变量
+
+编辑 /etc/profile 文件，添加 Maven 的环境变量配置：
+
+```bash
+sudo vi /etc/profile
+```
+
+在文件末尾添加以下内容：
+
+```bash
+export M2_HOME=/opt/maven
+export PATH=${M2_HOME}/bin:${PATH}
+```
+
+保存文件并执行以下命令，使环境变量立即生效：
+
+```bash
+source /etc/profile
+```
+
+运行以下命令验证 Maven 是否安装成功：
+
+```bash
+mvn -v
+```
+
+### 配置阿里云镜像
+
+为了加速 Maven 的构建，可以配置阿里云的 Maven 镜像。在你的 Maven 配置文件 `~/.m2/settings.xml` 中添加以下内容：
+
+```xml
+<mirrors>
+    <mirror>
+        <id>aliyunmaven</id>
+        <mirrorOf>*</mirrorOf>
+        <name>阿里云公共仓库</name>
+        <url>https://maven.aliyun.com/repository/public</url>
+    </mirror>
+</mirrors>
+```

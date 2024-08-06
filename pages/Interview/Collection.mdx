@@ -1,0 +1,558 @@
+import PostImg from 'components/PostImg'
+
+# 集合
+
+## Java中的集合类及其分类
+
+Java集合框架（Java Collections Framework）提供了一组用于存储和操作数据的接口和类。它们主要分为以下几种数据结构：
+
+1. List
+2. Set
+3. Queue
+4. Stack
+5. Map
+
+<PostImg src="https://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web20240805170224.png"/>
+
+这些数据结构的具体特点如下：
+
+1. List：一个有序的集合，允许包含重复元素。它继承自 `Collection` 接口，主要的实现类包括：
+    * `ArrayList`：基于动态数组实现，查询操作较快。
+    * `LinkedList`：基于链表实现，增删操作较快。
+    * `Vector`：类似于 `ArrayList`，但线程安全。
+2. Set：一个不允许包含重复元素的集合。它继承自 `Collection` 接口，主要的实现类包括：
+    * `HashSet`：基于哈希表实现，元素无序。
+    * `LinkedHashSet`：基于哈希表和链表实现，元素有插入顺序。
+    * `TreeSet`：基于红黑树实现，元素有自然顺序或自定义顺序。
+3. Queue：一个先进先出的集合。它继承自 `Collection` 接口，主要的实现类包括：
+    * `LinkedList`：同时实现了 `List` 和 `Deque` 接口。
+    * `PriorityQueue`：基于优先级堆实现，元素按照优先级顺序出队。
+4. Stack：一个后进先出的集合。虽然 `Stack` 类本身存在于 `java.util` 包中，但在实际应用中，更常用 `Deque` 接口的实现类，如：
+    * `ArrayDeque`：基于动态数组实现的双端队列。
+    * `LinkedList`：也可以作为双端队列使用。
+5. Map：一个键值对集合，不继承自 `Collection` 接口。主要的实现类包括：
+    * `HashMap`：基于哈希表实现，无序。
+    * `LinkedHashMap`：基于哈希表和链表实现，有插入顺序。
+    * `TreeMap`：基于红黑树实现，有自然顺序或自定义顺序。
+
+## Collection 和 Collections 的区别
+
+* `Collection`：是一个集合接口，提供了一组用于操作集合对象的通用接口方法。`List`、`Set`、`Queue` 等都是 `Collection` 的子接口。
+* `Collections`：是一个包装类，包含了各种操作集合的静态方法，如排序、搜索和同步化等。这个类不能实例化，类似于一个工具类。
+
+<PostImg src="https://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web20240805173401.png" />
+
+## Java 中的 Collection 遍历方法
+
+1. 传统for循环：使用计数器遍历集合，如 `ArrayList` 等基于数组实现的集合。
+2. Iterator：每个集合都提供了相应的 `Iterator`。`Iterator` 通过 `next()` 和 `hasNext()` 方法来遍历集合。
+3. 增强的for循环（foreach）：本质上是基于 `Iterator` 实现的简化语法。
+4. Enumeration：是 `Iterator` 的古老版本，主要用于早期的集合类如 `Vector` 和 `Hashtable`。
+5. Stream API：从 JDK 1.8 开始引入，提供了使用函数式编程风格来操作集合的高阶抽象。
+
+## Iterable 和 Iterator 的使用
+
+* Iterator：定义了 `next()` 和 `hasNext()` 方法，代表具体的迭代方式。
+* Iterable：表示该集合可以迭代，包含一个 `iterator()` 方法来返回一个 `Iterator` 对象。
+
+<PostImg src="https://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web20240805173555.png"/>
+
+<PostImg src="https://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web20240805173843.png" />
+
+示例代码：
+
+```java
+class MyList<E> implements Iterable<E> {
+    public Iterator<E> iterator() {
+        return new MyIterator();
+    }
+
+    private class MyIterator implements Iterator<E> {
+        public boolean hasNext() {
+            // 实现逻辑
+        }
+
+        public E next() {
+            // 实现逻辑
+        }
+    }
+}
+```
+
+将 Iterable 和 Iterator 分开，有助于遵循单一职责原则，使迭代方式可以被多个可迭代集合复用，更符合面向对象编程的设计思想。
+
+## Java 集合的排序方式
+
+Java 中提供了多种方式对集合进行排序，主要包括以下几种方法：
+
+1. 实现 `Comparable` 接口
+2. 使用 `Comparator` 接口
+3. 使用 `Collections` 工具类
+4. 使用 Stream API
+
+### 实现 Comparable 接口
+
+让类实现 `Comparable` 接口，并重写 `compareTo` 方法。适用于自然排序，即类自身具有排序逻辑。
+
+```java
+public class Student implements Comparable<Student> {
+    private String name;
+    private int age;
+
+    public Student(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    @Override
+    public int compareTo(Student other) {
+        int nameCompare = this.name.compareTo(other.name);
+        if (nameCompare == 0) {
+            return Integer.compare(this.age, other.age);
+        }
+        return nameCompare;
+    }
+}
+```
+
+### 使用 Comparator 接口
+
+创建一个 `Comparator` 实例，适用于需要多个排序规则的情况。
+
+```java
+import java.util.Comparator;
+
+public class Student {
+    private String name;
+    private int age;
+
+    public Student(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public int getAge() {
+        return age;
+    }
+}
+
+// 使用 Comparator 进行排序
+Comparator<Student> studentComparator = Comparator
+    .comparing(Student::getName)
+    .thenComparingInt(Student::getAge);
+
+Collections.sort(students, studentComparator);
+```
+
+### 使用 Collections 工具类
+
+`Collections` 工具类提供了静态方法 `sort`，可以对实现了 `Comparable` 接口的对象进行排序，或者通过传入 `Comparator` 实例进行排序。
+
+```java
+import java.util.Collections;
+import java.util.List;
+
+Collections.sort(students); // 使用自然排序（Comparable）
+Collections.sort(students, studentComparator); // 使用 Comparator 排序
+```
+
+### 使用 Stream API
+
+从 Java 8 开始，Stream API 提供了一种声明性方式来排序集合。
+
+```java
+import java.util.stream.Collectors;
+
+List<Student> sortedStudents = students.stream()
+    .sorted(Comparator.comparing(Student::getName).thenComparingInt(Student::getAge))
+    .collect(Collectors.toList());
+```
+
+### 有了 Comparable 为什么还需要 Comparator？
+
+* `Comparable` 用于类本身具备排序能力时，通过实现 `Comparable` 接口的 `compareTo` 方法定义默认的排序逻辑。
+* `Comparator` 提供了更灵活的排序方式，可以在不修改类代码的情况下定义多种排序规则。
+
+### compareTo 和 equals 的区别
+
+* `compareTo`：用于定义对象的排序顺序，常用于自然排序和数值比较。
+* `equals`：用于定义对象的业务语义相等性，常用于判断两个对象在业务语义上是否相同，如字符串比较。
+
+### Set 集合的排序
+
+虽然 `Set` 集合本身是无序的，但某些实现类可以提供有序的集合：
+
+* `TreeSet`：基于 `TreeMap` 实现，自动对元素进行排序。
+* `LinkedHashSet`：基于 `LinkedHashMap` 实现，维护元素的插入顺序。
+
+### Set 真的是插入无序的吗？
+
+并不是所有的 `Set` 都是插入无序的，例如 `LinkedHashSet` 保持了元素的插入顺序。
+
+## 什么是 Fail-Fast 和 Fail-Safe？
+
+在 Java 集合框架中，Fail-Fast 和 Fail-Safe 是两种不同的错误处理机制，它们在处理并发修改时表现出不同的行为。
+
+### Fail-Fast
+
+Fail-Fast 机制在检测到集合被结构性修改时，会立刻抛出异常。这种机制通过在迭代器的操作中检查集合的修改次数来实现，主要用来快速发现问题，防止程序在错误的数据状态下继续运行。
+
+在集合迭代期间，如果检测到集合的结构发生变化（例如添加或删除元素），迭代器会抛出 `ConcurrentModificationException`。这是因为迭代器维护了一个 `expectedModCount`，它表示预期的修改次数，而集合本身也有一个 `modCount` 表示实际修改次数。当 `modCount` 和 `expectedModCount` 不一致时，抛出异常。
+
+以 `ArrayList` 源码为例，每次调用 `next()`、`remove()` 方法都会检查 `modCount` 是否与 `expectedModCount` 一致，不一致则抛出异常。
+
+```java
+public E next() {
+    checkForComodification();
+    int i = cursor;
+    if (i >= size)
+        throw new NoSuchElementException();
+    Object[] elementData = ArrayList.this.elementData;
+    if (i >= elementData.length) // 下一个元素的下标大于数组长度，则抛出异常（禁止迭代过程中新增元素）
+        throw new ConcurrentModificationException();
+    cursor = i + 1;
+    return (E) elementData[lastRet = i];
+}
+
+public void remove() {
+    if (lastRet < 0) // 上一个元素的下标小于 0，则抛出异常（禁止迭代过程中删除元素）
+        throw new IllegalStateException();
+    checkForComodification();
+
+    try {
+        ArrayList.this.remove(lastRet);
+        cursor = lastRet;
+        lastRet = -1;
+        expectedModCount = modCount;
+    } catch (IndexOutOfBoundsException ex) {
+        throw new ConcurrentModificationException();
+    }
+}
+```
+
+### Fail-Safe
+
+Fail-Safe 机制通过在遍历集合时，不直接访问原集合，而是访问原集合的副本。这样可以避免在并发修改时抛出异常。Fail-Safe 集合容器通常用于高并发环境，提供更高的容错能力和安全性。这种机制虽然可以避免并发修改异常，但也有一定的性能开销，因为每次修改都会创建新的副本。
+
+Fail-Safe 机制在遍历期间创建集合的副本，因此对原集合的修改不会影响迭代过程。`java.util.concurrent` 包中的大部分集合类（如 `CopyOnWriteArrayList`、`ConcurrentHashMap`）都采用了这种机制。
+
+以 `CopyOnWriteArrayList` 源码为例，每次新增元素都会拷贝一份原数组，然后修改新数组，最后替换原数组。
+
+```java
+public boolean add(E e) {
+    synchronized (lock) { // 添加元素时同步锁
+        Object[] es = getArray(); // 获取当前数组
+        int len = es.length; // 获取数组长度
+        es = Arrays.copyOf(es, len + 1); // 拷贝数组，并将长度加1，以确保新数组长度足够
+        es[len] = e; // 将新元素添加到新数组末尾
+        setArray(es); // 替换原数组
+        return true;
+    }
+}
+```
+
+> Note:
+> * Fail-Fast：在检测到集合被修改（新增、删除）时立即抛出异常，防止错误的数据继续被处理。常用于大多数 Java 集合类。
+> * Fail-Safe：通过访问集合的副本来避免并发修改异常，常用于高并发环境下的集合类，如 `CopyOnWriteArrayList`、`ConcurrentHashMap`。
+
+## 遍历同时修改一个 List 的几种方式
+
+在遍历一个 `List` 的过程中进行修改时，如果不当操作会触发 Fail-Fast 机制，导致抛出 `ConcurrentModificationException`。为了避免这种情况，可以采用以下几种方式：
+
+### 普通for循环（顺序遍历）
+
+这种方法虽然简单，但在删除元素时可能会出现漏删的情况，因为删除元素后，列表的大小发生变化，导致索引位置错乱。因此每次删除或者添加元素时，都需要重新调整索引。
+
+```java
+List<String> list = new ArrayList<>(Arrays.asList("A", "B", "C", "D"));
+for (int i = 0; i < list.size(); i++) {
+    if ("A".equals(list.get(i))) {
+        list.remove(i);
+        i--; // 调整索引，避免漏删
+    }
+}
+```
+
+### 普通for循环（倒序遍历）
+
+倒序遍历可以避免顺序遍历时的漏删问题，因为删除元素后，后面的元素位置不受影响。
+
+```java
+List<String> list = new ArrayList<>(Arrays.asList("A", "B", "C", "D"));
+for (int i = list.size() - 1; i >= 0; i--) {
+    if ("A".equals(list.get(i))) {
+        list.remove(i);
+    }
+}
+```
+
+### 使用迭代器遍历
+
+使用 `Iterator` 遍历时，可以安全地在遍历过程中删除元素，避免触发 Fail-Fast 机制。
+
+```java
+List<String> list = new ArrayList<>(Arrays.asList("A", "B", "C", "D"));
+Iterator<String> iterator = list.iterator();
+while (iterator.hasNext()) {
+    if ("A".equals(iterator.next())) {
+        iterator.remove(); // 使用 Iterator 的 remove 方法
+    }
+}
+```
+
+### 副本遍历
+
+创建集合的副本，然后遍历原集合，删除副本中的元素。这种方式虽然安全，但性能较差，因为需要复制整个集合。
+
+```java
+List<String> list = new ArrayList<>(Arrays.asList("A", "B", "C", "D"));
+List<String> copy = new ArrayList<>(list);
+for (String item : list) {
+    if ("A".equals(item)) {
+        copy.remove(item); // 修改副本，避免触发 Fail-Fast 机制
+    }
+}
+list = copy; // 重新赋值给原集合
+```
+
+### 使用并发安全的集合类
+
+使用并发安全的集合类如 `CopyOnWriteArrayList`，可以在遍历过程中进行安全的修改，这等同于上面的副本遍历方式。
+
+```java
+List<String> list = new CopyOnWriteArrayList<>(Arrays.asList("A", "B", "C", "D"));
+for (String item : list) {
+    if ("A".equals(item)) {
+        list.remove(item);
+    }
+}
+```
+
+### 使用 Stream API
+
+使用 Stream API 的过滤方法，可以创建一个不包含特定元素的新集合。Stream 每次处理后都会生成一个新的 Stream，不存在并发问题。
+
+```java
+List<String> list = new ArrayList<>(Arrays.asList("A", "B", "C", "D"));
+List<String> filteredList = list.stream()
+    .filter(item -> !"A".equals(item))
+    .collect(Collectors.toList());
+```
+
+### 使用 removeIf 方法
+
+从Java 8开始，List接口提供了removeIf方法用于删除所有满足特定条件的元素。这种方法简单高效，推荐使用。
+
+```java
+List<String> list = new ArrayList<>(Arrays.asList("A", "B", "C", "D"));
+list.removeIf(item -> "A".equals(item));
+```
+
+总结：
+
+* 普通for循环：适用于简单场景，但需要注意索引调整。
+* 倒序遍历：避免顺序遍历时的漏删问题。
+* 迭代器遍历：安全且常用，推荐使用。
+* 副本遍历：安全但性能较差，不常用。
+* 并发安全集合类：适用于并发环境，但性能开销较大。
+* Stream API：优雅且高效，推荐使用。
+* removeIf 方法：最简单直接的方法，推荐使用。
+
+## Set 是如何保证元素不重复的
+
+在 Java 中，`Set` 接口是一个不允许包含重复元素的集合。主要的实现类有 `HashSet`、`TreeSet` 和 `LinkedHashSet`。不同的实现类采用不同的机制来确保元素不重复。
+
+### HashSet
+
+`HashSet` 基于哈希表实现，底层使用 `HashMap` 来存储数据。`HashSet` 确保元素不重复的机制如下：
+
+1. 计算哈希码：当向 `HashSet` 中添加元素时，首先计算该元素的 `hashCode`。
+2. 确定存储位置：通过扰动函数和按位与操作，计算出元素在哈希表中的位置。
+3. 冲突处理：如果该位置为空，直接存储元素；如果该位置不为空，使用 `equals` 方法比较元素是否相等。
+4. 元素比较：如果两个元素的 `hashCode` 相同且通过 `equals` 方法比较结果相等，则认为是重复元素，不添加到集合中；否则，将元素添加到链表或树的适当位置。
+
+对应源码：
+
+```java
+public class HashSet<E> implements Set<E> {
+    private transient HashMap<E,Object> map; // 底层使用 HashMap 存储数据，HashMap 的键值对中，键不能为空，值为一个固定的对象 PRESENT。
+
+    private static final Object PRESENT = new Object();
+
+    public boolean add(E e) {
+        return map.put(e, PRESENT) == null;
+    }
+}
+```
+
+进一步看看 `HashMap` 的 `put` 方法：
+
+```java
+public V put(K key, V value) {
+    // hash(key) 计算 key 的哈希码
+    return putVal(hash(key), key, value, false, true);
+}
+```
+
+```java
+static final int hash(Object key) {
+    int h;
+    return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16); // 通过扰动函数和按位与操作，计算出元素在哈希表中的位置
+}
+```
+
+```java
+// 阈值，当链表长度超过该阈值时，将链表转换为红黑树
+static final int TREEIFY_THRESHOLD = 8;
+
+final V putVal(int hash, K key, V value, boolean onlyIfAbsent, boolean evict) {
+    Node<K,V>[] tab; Node<K,V> p; int n, i;
+    if ((tab = table) == null || (n = tab.length) == 0)
+        n = (tab = resize()).length;
+
+    // 计算索引并尝试插入新节点
+    if ((p = tab[i = (n - 1) & hash]) == null) {
+        // 如果当前位置为空，则直接插入新节点
+        tab[i] = newNode(hash, key, value, null);
+    } else {
+        Node<K,V> e; K k;
+        // 检查是否已存在相同 hash 和 key 的节点
+        if (p.hash == hash &&
+            ((k = p.key) == key || (key != null && key.equals(k)))) {
+            e = p;
+        } else if (p instanceof TreeNode) {
+            // 如果当前节点是红黑树节点，则按树的方式插入
+            e = ((TreeNode<K,V>)p).putTreeVal(this, tab, hash, key, value);
+        } else {
+            // 遍历链表，查找或插入新节点
+            for (int binCount = 0; ; ++binCount) {
+                if ((e = p.next) == null) {
+                    p.next = newNode(hash, key, value, null);
+                    // 如果链表长度超过阈值8，则转换为红黑树
+                    if (binCount >= TREEIFY_THRESHOLD - 1) // -1 for 1st
+                        treeifyBin(tab, hash);
+                    break;
+                }
+                // 检查是否已存在相同 hash 和 key 的节点
+                if (e.hash == hash &&
+                    ((k = e.key) == key || (key != null && key.equals(k))))
+                    break;
+                p = e;
+            }
+        }
+        // 如果找到已存在的 key，则更新其 value（如果 onlyIfAbsent 为 false 或旧值为 null）
+        if (e != null) { // existing mapping for key
+            V oldValue = e.value;
+            if (!onlyIfAbsent || oldValue == null)
+                e.value = value;
+            afterNodeAccess(e);
+            return oldValue;
+        }
+    }
+    // 更新修改次数和大小，可能需要重新调整大小
+    ++modCount;
+    if (++size > threshold)
+        resize();
+    afterNodeInsertion(evict);
+    return null;
+}
+```
+
+在上面的源码中，确保 key 唯一性的关键位置有：
+
+1. **检查是否已存在相同 hash 和 key 的节点**：当 p（当前桶中的第一个节点）的 hash 值与待插入的 key 的 hash 值相等时，进一步通过 `==` 或 `equals()` 方法检查 key 是否相等。在遍历链表时，也进行了同样的检查。
+2. **hashCode() 和 equals() 方法**：`hashCode()` 方法用于确定 key 在 `HashMap` 中的桶位置（即索引）。`equals()` 方法用于在桶内（链表或红黑树中）检查是否存在具有相同 `hashCode()` 但不同对象的 key。
+
+通过这两个方法，`HashMap` 能够确保 key 的唯一性，即使不同的对象通过 `equals()` 方法被认为是相等的，它们也会被映射到同一个桶中，但只会存储一个键值对。如果尝试插入一个与已存在 key 相等的 key（即 `hashCode()` 相同且 `equals()` 也返回 true），则不会插入新的键值对，而是更新该 key 对应的 `value`。由于 `HaseSet` 的实现原理是 `HashMap`，所以 `HashSet` 也能够确保元素不重复。
+
+### TreeSet
+
+`TreeSet` 基于红黑树实现，底层使用 `TreeMap` 来存储数据。`TreeSet` 确保元素不重复的机制如下：
+
+1. 排序比较：`TreeSet` 中的元素需要实现 `Comparable` 接口，或者在创建 `TreeSet` 时提供 `Comparator`。
+2. 插入顺序：在插入元素时，通过 `compareTo` 或 `compare` 方法进行比较。如果比较结果为 0，表示元素相等，不添加到集合中；否则，将元素插入到适当的位置，保持树的平衡。
+
+```java
+public class TreeSet<E> extends AbstractSet<E> implements NavigableSet<E>, Cloneable, java.io.Serializable {
+    private transient NavigableMap<E,Object> m; // 底层使用 TreeMap 存储数据，TreeMap 的键值对中，键不能为空，值为一个固定的对象 PRESENT。
+
+    private static final Object PRESENT = new Object();
+
+    public boolean add(E e) {
+        return m.put(e, PRESENT) == null;
+    }
+}
+```
+
+### LinkedHashSet
+
+`LinkedHashSet` 基于哈希表和双向链表实现，底层使用 `LinkedHashMap` 来存储数据。`LinkedHashSet` 确保元素不重复的机制如下：
+
+1. 哈希表处理：`LinkedHashSet` 依赖于 `HashSet` 的哈希表处理机制来确保元素不重复。
+2. 维护插入顺序：通过双向链表记录元素的插入顺序，在遍历时按照插入顺序进行。
+
+```java
+public class LinkedHashSet<E> extends HashSet<E> implements Set<E>, Cloneable, java.io.Serializable {
+    public boolean add(E e) {
+        return super.add(e);
+    }
+}
+```
+
+### HashSet, TreeSet, LinkedHashSet, BitSet的区别
+
+功能不同：
+
+* `HashSet`：基本的 `Set` 实现，提供去重功能，元素无序。
+* `LinkedHashSet`：在 `HashSet` 基础上增加了维护插入顺序的功能。
+* `TreeSet`：提供了去重和排序功能，元素按自然顺序或指定的比较器顺序排列。
+* `BitSet`：位集合，用于高效存储和操作大量布尔值，适合处理大规模数值的存储和去重。
+
+实现方式不同：
+
+* `HashSet`：基于 `HashMap`，通过 `hashCode` 和 `equals` 方法去重。
+* `LinkedHashSet`：基于 `LinkedHashMap`，通过哈希表和双向链表去重和维护顺序。
+* `TreeSet`：基于 `TreeMap`，通过红黑树实现，依赖 `compareTo` 或 `Comparator` 方法去重和排序。
+* `BitSet`：基于位数组，用于存储布尔值或数值状态。
+
+### 什么是BitSet？有什么作用？
+
+`BitSet` 是一个位集合，底层使用长整型数组存储位信息。每个元素在集合中的状态由对应位的值（0或1）表示。
+
+作用如下：
+
+* 高效存储：适用于存储大量布尔值或整数，节省存储空间。
+* 快速操作：提供位操作，如与（AND）、或（OR）、异或（XOR）等。
+
+使用场景：
+
+* 处理大规模数值的去重和存在性判断。
+* 位标志位的管理和操作。
+* 高效集合操作，如求交集、并集、补集等。
+
+```java
+BitSet bitSet = new BitSet();
+
+bitSet.set(10); // 设置第10位为1
+System.out.println(bitSet.get(10)); // true
+
+bitSet.clear(10); // 清除第10位
+System.out.println(bitSet.get(10)); // false
+```
+
+`BitSet` 的优势与不足:
+
+* 优势：节省存储空间，相比于直接存储整型或布尔值，位数组更加紧凑；高效操作，支持批量位操作，性能优异。
+* 缺点：内存浪费，对于稀疏数据（数值差距大），会导致内存浪费；不适用于存储复杂对象，只能处理数值或布尔值，无法直接存储复杂对象。

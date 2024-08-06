@@ -13,11 +13,13 @@
   "Concurrency": "并发编程",
   "Spring": "Spring框架",
   "ORM": "ORM框架",
+  "MQ": "消息引擎",
   "DesignPatterns": "设计模式",
   "Command": "命令手册",
   "Installed": "安装手册",
   "Software": "软件合集",
   "Productivity": "效率工具",
+  "DataStructures" : "数据结构",
   "Interview": "面试合集",
   "chat": {
     "title": "Chat",

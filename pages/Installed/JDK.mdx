@@ -1,0 +1,120 @@
+import PostImg from 'components/PostImg'
+import { LinkCard, LinkCardContainer } from 'components/LinkCard'
+
+# JDK
+
+## Linux
+
+### 通过 Yum 安装
+
+确保系统包列表是最新的。这将帮助确保安装的是最新版本的软件包。
+
+```bash
+sudo yum update -y
+```
+
+确定要安装哪个 JDK 版本：
+
+```bash
+yum list Java*
+```
+
+<PostImg src="https://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web20240805201631.png" />
+
+确定 Linux 系统架构：
+
+```bash
+[root@lavm-zzgegfex4j ~]# uname -a
+Linux lavm-zzgegfex4j 3.10.0-1160.el7.x86_64 #1 SMP Mon Oct 19 16:18:59 UTC 2020 x86_64 x86_64 x86_64 GNU/Linux
+```
+
+选择一个适合需求的 JDK 版本进行安装，以 OpenJDK 8 为例：
+
+```bash
+yum install -y java-1.8.0-openjdk
+```
+
+验证安装：
+
+```bash
+java -version
+```
+
+查看安装路径：
+
+```bash
+[root@lavm-zzgegfex4j ~]# which java
+/usr/bin/java
+```
+
+### 传统方式
+
+选择 JDK 版本：
+
+<LinkCardContainer>
+    <LinkCard
+        title="Java Archive"
+        description="The Oracle Java Archive offers self-service download access to some of our historical Java releases"
+        imageUrl="https://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web20240805201900.png"
+        href="https://www.oracle.com/hk/java/technologies/downloads/archive/"
+    />
+</LinkCardContainer>
+
+查看 Linux 系统架构：
+
+```bash
+[root@lavm-zzgegfex4j ~]# uname -a
+Linux lavm-zzgegfex4j 3.10.0-1160.el7.x86_64 #1 SMP Mon Oct 19 16:18:59 UTC 2020 x86_64 x86_64 x86_64 GNU/Linux
+```
+
+这里以 JDK1.8 Linux ARM64 Compressed Archive 为例：
+
+<PostImg src="https://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web20240805202559.png" />
+
+我这里将下载好的压缩包通过 SFTP 上传至服务器的 `/usr/local/java` 目录:
+
+```bash
+[root@lavm-zzgegfex4j develop]# ls -l
+-rw-r--r--  1 root root  75389786 Aug  5 20:28 jdk-8u411-linux-aarch64.tar.gz
+```
+
+解压下载的压缩包：
+
+```bash
+# 解压
+cd /usr/local/java
+tar -zxvf jdk-8u411-linux-aarch64.tar.gz
+
+# 重命名
+mv jdk1.8.0_411 jdk-8
+```
+
+编辑配置文件添加环境变量：
+
+```bash
+vim /etc/profile
+```
+
+添加如下内容：
+
+```bash
+export JAVA_HOME=/usr/local/java/jdk-8
+export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
+export PATH=$JAVA_HOME/bin:$PATH
+```
+
+使配置生效：
+
+```bash
+source /etc/profile
+```
+
+验证安装：
+
+```bash
+java -version
+```
+
+
+
+

@@ -1,0 +1,159 @@
+import PostImg from 'components/PostImg'
+
+# Docker
+
+## Linux
+
+> TIP: 下面演示的 Linux 系统为 CentOS 7.9。
+
+更新你的系统并安装必要的依赖项：
+
+```bash
+sudo yum update -y
+sudo yum install -y yum-utils device-mapper-persistent-data lvm2
+```
+
+添加 Docker 的官方仓库：
+
+```bash
+sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+```
+
+如果平时不用魔法可以将上一步换为国内镜像源：
+
+```bash
+sudo yum-config-manager --add-repo https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
+sudo sed -i 's+download.docker.com+mirrors.aliyun.com/docker-ce+' /etc/yum.repos.d/docker-ce.repo
+```
+
+安装 Docker：
+
+```bash
+sudo yum makecache fast
+sudo yum install -y docker-ce docker-ce-cli containerd.io
+```
+
+启动 Docker 并设置开机自启：
+
+```bash
+sudo systemctl start docker
+sudo systemctl enable docker
+```
+
+检查是否安装成功：
+
+```bash
+docker --version
+```
+
+输出结果：
+
+```bash
+[root@lavm-zzgegfex4j ~]# docker --version
+Docker version 26.0.2, build 3c863ff
+```
+
+## Docker Compose
+
+Docker Compose 是一个用于定义和运行多容器 Docker 应用程序的工具，使用 Docker Compose 你可以用 YAML 文件来配置你的应用服务，然后使用一个命令，你就可以部署你配置的所有服务了。
+
+下载 Docker Compose 的当前稳定版本。你可以从 Docker Compose 的 [GitHub](https://github.com/docker/compose) 发布页面找到最新版本的链接。
+
+<PostImg src="https://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web20240805200947.png" />
+
+以当前最新版为例，首先我们需要下载 Docker Compose 的二进制文件，使用如下命令可以从 Github 上下载:
+
+```bash
+curl -L https://github.com/docker/compose/releases/download/v2.26.1/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
+```
+
+然后修改该文件的权限为可执行：
+
+```bash
+chmod +x /usr/local/bin/docker-compose
+```
+
+检查是否安装成功：
+
+```bash
+docker-compose --version
+```
+
+输出结果：
+
+```bash
+[root@lavm-zzgegfex4j ~]# docker-compose --version
+docker-compose version v2.26.1, build 0aeeb8fd
+```
+
+## Docker 查看容器运行命令
+
+有时我们想查看某个已经启动的容器的启动命令，可以借助 get_command_4_run_container 工具实现。
+
+拉取镜像：
+
+```bash
+docker pull cucker/get_command_4_run_container
+```
+
+使用方法非常简单，以 mysql 为例：
+
+```bash
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock cucker/get_command_4_run_container mysql
+```
+
+```bash
+[root@lavm-zzgegfex4j ~]# docker run --rm -v /var/run/docker.sock:/var/run/docker.sock cucker/get_command_4_run_container mysql
+docker run -d \
+ --name mysql \
+ --cgroupns host \
+ --env MYSQL_ROOT_PASSWORD=root \
+ -p 4406:3306/tcp \
+ --restart=always \
+ -v /develop/mysql/data:/var/lib/mysql \
+ -v /develop/mysql/config:/etc/mysql/conf.d \
+ -v /develop/mysql/logs:/var/log/mysql \
+ mysql:8.0
+```
+
+实际使用下来，可以发现上述方法虽然简单，但是每次需要输入一长串的命令。为此，我们可以在 shell 配置文件中（例如 `.bashrc` 或 `.zshrc`）为复杂的命令设置一个别名。
+
+这里以 docker_run_cmd 作为别名为例，使用 vim 编辑用户的 `.bashrc` 配置文件：
+
+```bash
+vim ~/.bashrc
+```
+
+在 `.bashrc` 文件的末尾添加以下行：
+
+```bash
+alias docker_run_cmd="docker run --rm -v /var/run/docker.sock:/var/run/docker.sock cucker/get_command_4_run_container"
+```
+
+输入 `:wq` 保存并退出，重新加载配置文件：
+
+```bash
+source ~/.bashrc
+```
+
+之后使用简单的命令即可快速查看对应容器的启动命令了：
+
+```bash
+docker_run_cmd mysql
+```
+
+输出结果：
+
+```bash
+[root@lavm-zzgegfex4j ~]# docker_run_cmd mysql
+docker run -d \
+ --name mysql \
+ --cgroupns host \
+ --env MYSQL_ROOT_PASSWORD=root \
+ -p 4406:3306/tcp \
+ --restart=always \
+ -v /develop/mysql/data:/var/lib/mysql \
+ -v /develop/mysql/config:/etc/mysql/conf.d \
+ -v /develop/mysql/logs:/var/log/mysql \
+ mysql:8.0
+```

@@ -1,0 +1,473 @@
+# 快速部署
+
+> TIP: 节介绍如何快速部署一个单节点单副本 RocketMQ 服务，并完成简单的消息收发。
+
+## 本地部署
+
+> TIP: 系统要求
+> 1. 64位操作系统，推荐 Linux/Unix/macOS
+> 2. 64位 JDK 1.8+
+
+### 下载安装 Apache RocketMQ
+
+RocketMQ 的安装包分为两种，二进制包和源码包，二进制包是已经编译完成后可以直接运行的，源码包是需要编译后运行的:
+
+1. 源码包: [https://dist.apache.org/repos/dist/release/rocketmq/5.3.0/rocketmq-all-5.3.0-source-release.zip](https://dist.apache.org/repos/dist/release/rocketmq/5.3.0/rocketmq-all-5.3.0-source-release.zip)
+2. 二进制包: [https://dist.apache.org/repos/dist/release/rocketmq/5.3.0/rocketmq-all-5.3.0-bin-release.zip](https://dist.apache.org/repos/dist/release/rocketmq/5.3.0/rocketmq-all-5.3.0-bin-release.zip)
+
+这里以在 Linux 环境下利用社区 5.3.0 的源码包为例，介绍 RocketMQ 安装过程。解压 5.3.0 的源码包并编译构建二进制可执行文件：
+
+执行如下命令下载源码包：
+
+```bash
+$ wget https://dist.apache.org/repos/dist/release/rocketmq/5.3.0/rocketmq-all-5.3.0-source-release.zip
+```
+
+解压 5.3.0 的源码包并编译构建二进制可执行文件:
+
+```bash
+# 解压
+$ unzip rocketmq-all-5.3.0-source-release.zip
+
+# 编译
+$ cd rocketmq-all-5.3.0-source-release/
+$ mvn -Prelease-all -DskipTests -Dspotbugs.skip=true clean install -U
+$ cd distribution/target/rocketmq-5.3.0/rocketmq-5.3.0
+```
+
+### 启动NameServer
+
+NameServer 是 RocketMQ 的一个组件，NameServer 主要用于存储 RocketMQ 的元数据，包括 Broker 的信息、Topic 的信息、Consumer 的订阅信息等。
+
+NameServer 的启动命令如下：
+
+```bash
+$ nohup sh bin/mqnamesrv &
+```
+
+验证 NameServer 是否启动成功：
+
+```bash
+$ tail -f ~/logs/rocketmqlogs/namesrv.log
+```
+
+如果在 namesrv.log 中看到 'The Name Server boot success..'， 表示 NameServer 已成功启动。
+
+### 启动 Broker + Proxy
+
+NameServer 成功启动后，我们继续启动 Broker 和 Proxy。Broker 和 Proxy 是 RocketMQ 的核心组件，Broker 负责存储消息，Proxy 负责消息的发送和接收。这里
+我们使用 Local 模式部署，即 Broker 和 Proxy 同进程部署。5.x 版本也支持 Broker 和 Proxy 分离部署以实现更灵活的集群能力。（详见 [部署教程](https://rocketmq.apache.org/zh/docs/deploymentOperations/01deploy)）
+
+Broker 和 Proxy 的启动命令如下：
+
+```bash
+# 先启动 broker
+$ nohup sh bin/mqbroker -n localhost:9876 --enable-proxy &
+
+# 验证 broker 是否启动成功，比如 broker 的 IP 是 192.168.0.1 名字是 broker-a
+$ tail -f ~/logs/rocketmqlogs/proxy.log
+The broker[broker-a,192.169.1.2:10911] boot success...
+```
+
+至此，一个单节点副本的 RocketMQ 集群已经部署起来了，我们可以利用脚本进行简单的消息收发。
+
+### 工具测试消息收发
+
+在进行工具测试消息收发之前，我们需要告诉客户端 NameServer 的地址，RocketMQ 有多种方式在客户端中设置 NameServer 地址，这里我们利用环境变量 NAMESERVER_ADDR 来设置 NameServer 地址。
+
+```bash
+$ export NAMESRV_ADDR=localhost:9876
+$ sh bin/tools.sh org.apache.rocketmq.example.quickstart.Producer
+ SendResult [sendStatus=SEND_OK, msgId= ...
+
+$ sh bin/tools.sh org.apache.rocketmq.example.quickstart.Consumer
+ ConsumeMessageThread_%d Receive New Messages: [MessageExt...
+```
+
+### 关闭服务器
+
+完成实验后，我们可以通过以下方式关闭服务:
+
+```bash
+$ sh bin/mqshutdown broker
+The mqbroker(36695) is running...
+Send shutdown request to mqbroker with proxy enable OK(36695)
+
+
+$ sh bin/mqshutdown namesrv
+The mqnamesrv(36664) is running...
+Send shutdown request to mqnamesrv(36664) OK
+```
+
+## Docker 部署
+
+> TIP: 系统要求
+> 1. 64位操作系统，推荐 Linux/Unix/macOS
+> 2. 64位 JDK 1.8+
+
+### 拉取 RocketMQ 镜像
+
+```bash
+docker pull apache/rocketmq:5.3.0
+```
+
+### 创建容器共享网络
+
+RocketMQ 中有多个服务，需要创建多个容器，创建 docker 网络便于容器间相互通信。
+
+```bash
+docker network create rocketmq
+```
+
+### 启动 NameServer
+
+```bash
+# 启动 NameServer
+docker run -d --name rmqnamesrv -p 9876:9876 --network rocketmq apache/rocketmq:5.3.0 sh mqnamesrv
+
+# 验证 NameServer 是否启动成功
+docker logs -f rmqnamesrv
+```
+
+看到 'The Name Server boot success..'， 表示 NameServer 已成功启动。
+
+### 启动 Broker + Proxy
+
+NameServer 成功启动后，我们启动 Broker 和 Proxy。
+
+```bash
+# 配置 Broker 的 IP 地址
+echo "brokerIP1=127.0.0.1" > broker.conf
+
+# 启动 Broker 和 Proxy
+docker run -d \
+--name rmqbroker \
+--network rocketmq \
+-p 10912:10912 -p 10911:10911 -p 10909:10909 \
+-p 8080:8080 -p 8081:8081 \
+-e "NAMESRV_ADDR=rmqnamesrv:9876" \
+-v ./broker.conf:/home/rocketmq/rocketmq-5.3.0/conf/broker.conf \
+apache/rocketmq:5.3.0 sh mqbroker --enable-proxy \
+-c /home/rocketmq/rocketmq-5.3.0/conf/broker.conf
+
+# 验证 Broker 是否启动成功
+docker exec -it rmqbroker bash -c "tail -n 10 /home/rocketmq/logs/rocketmqlogs/proxy.log"
+```
+
+看到 'The broker boot success..'， 表示 Broker 已成功启动。
+
+至此，一个单节点副本的 RocketMQ 集群已经部署起来了，我们可以利用脚本进行简单的消息收发。
+
+### SDK 测试消息收发
+
+1. 在 IDEA 中创建一个 Java 工程。
+2. 在 pom.xml 文件中添加以下依赖引入 Java 依赖库。
+
+```xml
+<dependency>
+    <groupId>org.apache.rocketmq</groupId>
+    <artifactId>rocketmq-client-java</artifactId>
+    <version>${rocketmq-client-java-version}</version> <!-- 替换为最新版本 -->
+</dependency>
+```
+
+3. 进入 broker 容器，通过 mqadmin 创建 Topic。
+
+```bash
+$ docker exec -it rmqbroker bash
+$ sh mqadmin updatetopic -t TestTopic -c DefaultCluster
+```
+
+4. 在已创建的 Java 工程中，创建发送普通消息程序并运行。
+
+```java
+import org.apache.rocketmq.client.apis.ClientConfiguration;
+import org.apache.rocketmq.client.apis.ClientException;
+import org.apache.rocketmq.client.apis.ClientServiceProvider;
+import org.apache.rocketmq.client.apis.message.Message;
+import org.apache.rocketmq.client.apis.producer.Producer;
+import org.apache.rocketmq.client.apis.producer.SendReceipt;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+
+/**
+ * Desc: 生产者
+ *
+ * @author javgo
+ * @create 2024-08-06 19:27
+ */
+public class ProducerExample {
+
+    private static final Logger logger  = LoggerFactory.getLogger(ProducerExample.class);
+
+    /**
+     * 接入点地址，也就是 Proxy 的 IP:Port
+     */
+    private static final String ENDPOINT = "localhost:8081";
+
+    /**
+     * 消息发送的目标 Topic，需要提前创建好
+     */
+    private static final String TOPIC = "TestTopic";
+
+    public static void main(String[] args) {
+        // 获取服务提供者
+        ClientServiceProvider provider = ClientServiceProvider.loadService();
+        // 构建客户端配置
+        ClientConfiguration configuration = buildClientConfiguration(ENDPOINT);
+
+        try (Producer producer = createProducer(provider, configuration, TOPIC)) {
+            // 构建消息
+            Message message = buildMessage(provider, TOPIC, "messageKey", "messageBody");
+            // 发送消息，需要关注发送结果，并捕获失败等异常
+            SendReceipt sendReceipt = producer.send(message);
+            logger.info("消息发送成功，messageId={}", sendReceipt.getMessageId());
+        } catch (IOException | ClientException e) {
+            logger.error("消息发送失败。", e);
+        }
+    }
+
+    /**
+     * 构建客户端配置。
+     *
+     * @param endpoint RocketMQ 代理的端点
+     * @return 客户端配置
+     */
+    private static ClientConfiguration buildClientConfiguration(String endpoint) {
+        return ClientConfiguration.newBuilder()
+                .setEndpoints(endpoint)
+                .build();
+    }
+
+    /**
+     * 创建并初始化生产者。
+     *
+     * @param provider 客户端服务提供者
+     * @param configuration 客户端配置
+     * @param topic 发送消息的目标主题
+     * @return 初始化的生产者
+     * @throws ClientException 如果生产者创建失败
+     */
+    private static Producer createProducer(ClientServiceProvider provider, ClientConfiguration configuration, String topic) throws ClientException {
+        return provider.newProducerBuilder()
+                .setTopics(topic)
+                .setClientConfiguration(configuration)
+                .build();
+    }
+
+    /**
+     * 构建要发送的消息。
+     *
+     * @param provider 客户端服务提供者
+     * @param topic 消息发送的主题
+     * @param key 消息的键
+     * @param body 消息的主体内容
+     * @return 构建的消息
+     */
+    private static Message buildMessage(ClientServiceProvider provider, String topic, String key, String body) {
+        return provider.newMessageBuilder()
+                .setTopic(topic)
+                .setKeys(key)
+                .setBody(body.getBytes())
+                .build();
+    }
+}
+```
+
+5. 在已创建的 Java 工程中，创建订阅普通消息程序并运行。
+
+```java
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+import org.apache.rocketmq.client.apis.ClientConfiguration;
+import org.apache.rocketmq.client.apis.ClientException;
+import org.apache.rocketmq.client.apis.ClientServiceProvider;
+import org.apache.rocketmq.client.apis.consumer.ConsumeResult;
+import org.apache.rocketmq.client.apis.consumer.FilterExpression;
+import org.apache.rocketmq.client.apis.consumer.FilterExpressionType;
+import org.apache.rocketmq.client.apis.consumer.PushConsumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.Collections;
+
+/**
+ * Desc: 消费者
+ * <p>
+ * Apache RocketMQ 支持 SimpleConsumer 和 PushConsumer 两种消费者类型，二者的区别在于 SimpleConsumer 是同步调用，
+ * PushConsumer 是异步回调。
+ *
+ * @author javgo
+ * @create 2024-08-06 19:37
+ */
+@NoArgsConstructor(access = AccessLevel.PRIVATE) // 禁止外部实例化
+public class PushConsumerExample {
+
+    private static final Logger logger = LoggerFactory.getLogger(PushConsumerExample.class);
+
+    /**
+     * 接入点地址，也就是 Proxy 的 IP:Port
+     */
+    private static final String ENDPOINT = "localhost:8081";
+
+    /**
+     * 消费者分组
+     */
+    private static final String CONSUMER_GROUP = "YourConsumerGroup";
+
+    /**
+     * 订阅的目标 Topic
+     */
+    private static final String TOPIC = "TestTopic";
+
+    /**
+     * 订阅消息的过滤规则，表示订阅所有 Tag 的消息
+     */
+    private static final String TAG = "*";
+
+    public static void main(String[] args) {
+        // 获取服务提供者, 这里使用 final 关键字，禁止外部修改
+        final ClientServiceProvider provider = ClientServiceProvider.loadService();
+        // 创建客户端配置
+        ClientConfiguration clientConfiguration = buildClientConfiguration(ENDPOINT);
+        // 创建过滤表达式
+        FilterExpression filterExpression = buildFilterExpression(TAG);
+
+        try (PushConsumer pushConsumer = createPushConsumer(provider, clientConfiguration, CONSUMER_GROUP, TOPIC, filterExpression)) {
+            // 阻塞主线程以保持消费者运行
+            Thread.sleep(Long.MAX_VALUE);
+        } catch (ClientException | IOException | InterruptedException e) {
+            logger.error("PushConsumer error", e);
+        }
+    }
+
+    /**
+     * 构建客户端配置。
+     *
+     * @param endpoint RocketMQ 代理的端点
+     * @return 客户端配置
+     */
+    private static ClientConfiguration buildClientConfiguration(String endpoint) {
+        return ClientConfiguration.newBuilder()
+                .setEndpoints(endpoint)
+                .build();
+    }
+
+    /**
+     * 构建过滤表达式。
+     *
+     * @param tag 过滤的标签
+     * @return 过滤表达式
+     */
+    private static FilterExpression buildFilterExpression(String tag) {
+        return new FilterExpression(tag, FilterExpressionType.TAG);
+    }
+
+    /**
+     * 创建并初始化 PushConsumer。
+     *
+     * @param provider 客户端服务提供者
+     * @param configuration 客户端配置
+     * @param consumerGroup 消费者分组
+     * @param topic 订阅的主题
+     * @param filterExpression 过滤表达式
+     * @return 初始化的 PushConsumer
+     * @throws ClientException 如果消费者创建失败
+     */
+    private static PushConsumer createPushConsumer(ClientServiceProvider provider, ClientConfiguration configuration,
+        String consumerGroup, String topic, FilterExpression filterExpression) throws ClientException {
+        return provider.newPushConsumerBuilder()
+                .setClientConfiguration(configuration)
+                .setConsumerGroup(consumerGroup)
+                .setSubscriptionExpressions(Collections.singletonMap(topic, filterExpression))
+                .setMessageListener(messageView -> {
+                    logger.info("Consume message successfully, messageId={}", messageView.getMessageId());
+                    return ConsumeResult.SUCCESS;
+                }).build();
+    }
+}
+```
+
+### 停止容器
+
+完成实验后，我们可以通过以下方式停止容器。
+
+```bash
+# 停止 NameServer 容器
+docker stop rmqnamesrv
+
+# 停止 Broker 容器
+docker stop rmqbroker
+```
+
+## Docker Compose 部署
+
+> TIP: 系统要求
+> 1. 64位操作系统，推荐 Linux/Unix/macOS
+> 2. 64位 JDK 1.8+
+
+### 编写 docker-compose
+
+为了快速启动并运行 RockerMQ 集群，您可以使用以下模板通过修改或添加环境部分中的配置来创建 docker-compose.yml 文件。
+
+```yaml
+version: '3.8'
+services:
+  namesrv:
+    image: apache/rocketmq:5.3.0
+    container_name: rmqnamesrv
+    ports:
+      - 9876:9876
+    networks:
+      - rocketmq
+    command: sh mqnamesrv
+  broker:
+    image: apache/rocketmq:5.3.0
+    container_name: rmqbroker
+    ports:
+      - 10909:10909
+      - 10911:10911
+      - 10912:10912
+    environment:
+      - NAMESRV_ADDR=rmqnamesrv:9876
+    depends_on:
+      - namesrv
+    networks:
+      - rocketmq
+    command: sh mqbroker
+  proxy:
+    image: apache/rocketmq:5.3.0
+    container_name: rmqproxy
+    networks:
+      - rocketmq
+    depends_on:
+      - broker
+      - namesrv
+    ports:
+      - 8080:8080
+      - 8081:8081
+    restart: on-failure
+    environment:
+      - NAMESRV_ADDR=rmqnamesrv:9876
+    command: sh mqproxy
+networks:
+  rocketmq:
+    driver: bridge
+```
+
+### 启动 RocketMQ 集群
+
+根据 docker-compose.yml 文件启动所有定义的服务。
+
+```bash
+docker-compose up -d
+```
+
+### 停止 RocketMQ 集群
+
+```bash
+docker-compose down
+```

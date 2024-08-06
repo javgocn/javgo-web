@@ -1,0 +1,544 @@
+# 动态数组
+
+数据可以分为两个大类，静态数组和动态数组：
+
+* 静态数组：其实就是一块连续的内存空间，大小是固定的，不能动态改变。我们可以通过数组下标访问元素，也可以通过数组下标修改元素。
+* 动态数组：动态数组底层还是是一块连续的内存空间，但是大小是可变的，我们可以通过数组下标访问元素，也可以通过数组下标修改元素。可以理解为它是高级编程语言为例方便开发者使用，在静态数组的基础上增加了一些功能，比如可以动态扩容和动态缩容。
+
+## 静态数组
+
+在创建静态数组的时候，需要指定数组的大小和数据类型。静态数组的用法一般比较原始，在实际工作中不常用。即便是算法题也常用的是动态数组，但是静态数组是底层的实现，动态数组是高级的实现。因此，我们先介绍静态数组。
+
+定义一个静态数组：
+
+```java
+// 定义一个大小为 10 的静态数组
+int[] arr = new int[10];
+
+// 使用索引赋值
+arr[0] = 1;
+arr[1] = 2;
+
+// 使用索引取值
+int a = arr[0];
+```
+
+那么，上面的 `new int[10]` 到底做了什么事情呢？
+
+1. 在内存中申请一块大小为 10 * 4 的内存空间，其中每个元素都是 4 字节，一共是 40 字节的连续内存空间。
+2. 定义一个名为 arr 的指针，将前面申请的内存空间地址赋值给 arr。
+
+> TIP:
+> 1. 为什么数组的索引从 0 开始呢？
+>    简单理解就是为了方便计算索引对应的内存地址。例如，索引为 0 的元素对应的内存地址是 arr + 0 * 4，其中 arr 是数组的首地址，0 * 4 是索引对应的偏移量。
+> 2. 为什么 Java 创建的数组可以直接访问元素呢？
+>    因为 Java 会在静态数组创建完成后自动初始化数组的每个元素，如果是 int 类型，那么每个元素就是 0。
+> 3. 为什么数组具有随机访问的能力？
+>    因为数组的底层实现是连续的内存空间，所以可以通过计算索引对应的内存地址来访问元素。而计算机的内存寻址时间可以认为是 O(1) 的，数组随机访问的时间复杂度也因此是 O(1)。
+
+## 增删查改
+
+### 查找元素
+
+查找元素的复杂度是 O(1)，因为数组的底层实现是连续的内存空间，可以通过计算索引对应的内存地址来访问元素。
+
+```java
+// 查找元素
+int a = arr[0];
+```
+
+### 修改元素
+
+修改元素的复杂度是 O(1)，因为数组的底层实现是连续的内存空间，可以通过计算索引对应的内存地址来访问元素。
+
+```java
+// 修改元素
+arr[0] = 1;
+```
+
+### 增加元素
+
+#### 情况1：数组末尾添加元素
+
+这种情况由于只是对索引复制，所以在数组末尾添加元素复杂度是 O(1)。
+
+```java
+// 大小为 10 的数组已经装了 4 个元素
+int[] arr = new int[10];
+for (int i = 0; i < 4; i++) {
+    arr[i] = i;
+}
+
+// 添加元素
+arr[4] = 4;
+```
+
+#### 情况2：数组中间添加元素
+
+这种情况由于数组是连续的内存空间，所以需要将后面的元素往后移动一位，给需要添加的元素腾出空间，所以复杂度是 O(n)。
+
+```java
+// 大小为 10 的数组已经装了 4 个元素
+int[] arr = new int[10];
+for (int i = 0; i < 4; i++) {
+    arr[i] = i;
+}
+
+// 此时需要在第三个位置添加元素
+// 1. 把第三个位置以及之后的元素往后移动一位，为新的元素腾出空间
+for (int i = 3; i >= 1; i--) {
+    arr[i + 1] = arr[i]; // 下一个索引位的值设置为当前索引位的值
+}
+
+
+// 现在在第三个位置添加元素
+arr[2] = 1;
+```
+
+#### 情况3：数组空间已满
+
+我们知道，数组在创建的时候，大小是固定的，如果数组空间已满，那么就不能再添加元素了。这时候如果想添加元素，不管是在末尾还是中间都已经没有多余的内存空间了。
+这时候你是否有这样的想法，在原来的内存空间再加上对应元素需要的内存空间不就行了吗？其实并不可行，所谓 "连续内存" 就是要求一次性申请内存，所以如果要申请新
+的内存空间，那么就需要重新申请内存空间，而且新的内存空间和原来的内存空间是隔离的，所以无法实现连续的内存空间。
+
+那么，如果数组空间已满，那么怎么办呢？就只能重新申请一个更大的内存空间，然后将原来的内存空间中的元素复制到新的内存空间中，然后再释放原来的内存空间。这就是
+数组的扩容。由于数组的扩容涉及到新数组的申请和原数组的复制和释放，所以复杂度是 O(n)。
+
+```java
+// 大小为 10 的数组已经装了 10 个元素
+int[] arr = new int[10];
+for (int i = 0; i < 10; i++) {
+    arr[i] = i;
+}
+
+// 此时数组空间已满，无法再添加元素
+// 1. 申请一个新的大小为 20 的数组
+int[] newArr = new int[20];
+
+// 2. 将原数组中的元素复制到新数组中
+for (int i = 0; i < 10; i++) {
+    newArr[i] = arr[i];
+}
+
+// 3. 释放原数组
+arr = null;
+arr = newArr; // 将新数组的地址赋值给原数组
+
+// 现在在数组末尾添加元素
+arr[10] = 10;
+```
+
+### 删除元素
+
+删除元素和增加元素类似，只是删除元素时，需要将后面的元素往前移动一位，给需要删除的元素腾出空间，所以复杂度是 O(n)。
+
+#### 情况1：数组末尾删除元素
+
+数组末尾元素的删除其实就是将对应位置的元素设置为一个特殊的值，比如 -1，表示这个位置已经被删除了。其本质也是进行一次随机访问，所以复杂度是 O(1)。
+在后面了解动态数组的时候，我们会介绍如何实现更加优雅的删除元素。
+
+```java
+// 大小为 10 的数组已经装了 4 个元素
+int[] arr = new int[10];
+for (int i = 0; i < 4; i++) {
+    arr[i] = i;
+}
+
+// 删除元素
+arr[3] = -1;
+```
+
+#### 情况2：数组中间删除元素
+
+数组中间元素的删除其实就是将后面的元素往前移动一位，给需要删除的元素腾出空间，所以复杂度是 O(n)。
+
+```java
+// 大小为 10 的数组已经装了 4 个元素
+int[] arr = new int[10];
+for (int i = 0; i < 4; i++) {
+    arr[i] = i;
+}
+
+// 此时需要删除第三个位置的元素
+// 1. 把第三个位置以及之后的元素往前移动一位，给需要删除的元素腾出空间
+for (int i = 2; i < 4; i++) {
+    arr[i] = arr[i + 1]; // 下一个索引位的值设置为当前索引位的值
+}
+// 2. 将最后一个元素设置为 -1，表示这个位置已经被删除了
+arr[4] = -1;
+```
+
+## 动态数组
+
+动态数组是数组的一个变种，动态数组的大小是可变的，可以动态的增加和减少大小。动态数组的实现原理是数组的扩容和缩容。但是需要明确的一个点是，动态数组
+只是让数组使用起来更加丝滑，并没有解决在数组中间增加或者删除元素的问题。这是因为数据随机访问的特性就决定了内存地址必须是线性的，这样一来元素的迁移
+就无法避免，因此动态数组的扩容和缩容只是为了解决数组空间已满的问题，而不是为了解决数组中间增加或者删除元素的问题。
+
+下面以 `ArrayList` 为例介绍动态数组的基本使用：
+
+```java
+// 创建一个 ArrayList, 不需要指定大小，它会根据实际存储的元素自动扩容或者缩容
+ArrayList<Integer> list = new ArrayList<>();
+
+// 在末尾追加元素，时间复杂度 O(1)
+for (int i = 0; i < 10; i++) {
+    arr.add(i);
+}
+
+// 在中间插入元素，时间复杂度 O(N)
+arr.add(2, 666);
+
+// 在头部插入元素，时间复杂度 O(N)
+arr.add(0, -1);
+
+// 删除末尾元素，时间复杂度 O(1)
+arr.remove(arr.size() - 1);
+
+// 删除中间元素，时间复杂度 O(N)
+arr.remove(2);
+
+// 根据索引查询元素，时间复杂度 O(1)
+int a = arr.get(0);
+
+// 根据索引修改元素，时间复杂度 O(1)
+arr.set(0, 100);
+
+// 根据元素值查找索引，时间复杂度 O(N)
+int index = arr.indexOf(666);
+```
+
+下面给出一个简单的动态数组的实现，需要关注一下问题：
+
+1. 自动扩容和缩容
+
+扩容前面我们已经有了大致了解，但是在实际的使用中，数组的缩容也是一个关键点，因为如果你申请了一个 100 个元素的数组，但是实际只使用了 10 个元素，那
+么就浪费了90 个内存空间。为了避免资源的浪费，我们需要有一些策略来控制数组的缩容。下面是一个简单的策略：
+
+    * 当数组元素个数达到底层的静态数组的容量上限时，就扩容，扩容的容量是原来的两倍。
+    * 当数组元素个数缩减到底层的静态数组容量的 1/4 时，就缩容，缩容的容量是原来的 1/2。
+
+2. 索引越界的检查
+
+我们会提供两个检查数组索引是否越界的方法，分别是 `checkElementIndex` 和 `checkPositionIndex`，他们的区别仅仅在于 `index < size` 和 `index <= size`。
+为什么 `checkPositionIndex` 可以允许索引等于 `size`？因为该方法专门用于处理在数组中插入元素的场景，而插入元素的时候，索引等于 `size` 表示插入到数组末尾。
+
+看如下 `nums` 数组，对于每个元素，合法索引一定是 `index < nums.length`:
+
+```java
+nums = [1, 2, 3, 4];
+index   0  1  2  3
+```
+
+但是如果要在数组中插入新的元素，新元素的撤入位置可能并不是元素的可用索引，二十索引之间的空隙：
+
+```java
+nums = [ | 1 | 2 | 3 | 4 | ];
+index    0   1   2   3   4
+```
+
+这些空隙都是合法的插入位置，所以 `checkPositionIndex` 可以接受索引等于 `size`。
+
+3. 删除元素谨防内存泄漏
+
+如果只从算法的角度考虑，其实不需要关心被删除的元素应该如何处理，但是到具体的实现中去考虑，需要考虑清楚被删除的元素是否需要被释放，避免可能的内存泄漏。因此，在
+删除元素的时候，都会把被删除的元素设置为 `null`（注意：动态数组一般存储的元素都是引用类型，所以需要设置为 `null`）
+
+```java
+public E removeLast() {
+    // 记录要删除的元素
+    E deletaVal = data[size - 1];
+
+    // 删除最后一个元素，将其设置为 null，避免内存泄漏
+    data[size - 1] = null;
+    size--;
+
+    return deletaVal;
+}
+```
+
+> TIP: 在 Java 的垃圾回收机制中是基于图算法中的可达性分析，也就是说，如果一个对象确定再也不会被访问了，那么这个对象就会被回收，释放占用的内存空间。也就是说
+> 如果没有执行 data[size - 1] = null，那么被删除的元素就不会被回收，就仍旧可以通过 data[size - 1] 访问到，该对象被认为可达，所以不会被回收，当堆积了大量
+> 被删除的元素时，就会造成内存泄漏。
+
+最终的动态数组实现如下：
+
+```java
+/**
+ * Desc: 动态数组实现
+ *
+ * @author javgo
+ * @create 2024-08-06 18:33
+ */
+public class MyArrayList<E> {
+
+    // 真正存储数据的底层数组
+    private E[] data;
+
+    // 数组中实际存储的元素个数
+    private int size;
+
+    // 默认数组容量
+    private static final int INIT_CAPACITY = 10;
+
+    /**
+     * 默认构造方法
+     */
+    public MyArrayList() {
+        this(INIT_CAPACITY);
+    }
+
+    /**
+     * 可以自定义数组容量的构造方法
+     *
+     * @param initCapacity 初始容量
+     */
+    public MyArrayList(int initCapacity) {
+        data = (E[]) new Object[initCapacity];
+        size = 0;
+    }
+
+    /**
+     * 添加最后一个元素
+     *
+     * @param e 元素
+     */
+    public void addLast(E e) {
+        // 获取数组容量
+        int capacity = data.length;
+
+        // 检查数组容量是否足够, 不够则扩容至实际存储数组的2倍
+        if (size == capacity) {
+            resize(capacity * 2);
+        }
+
+        // 添加元素
+        data[size] = e;
+        // 元素个数加1
+        size++;
+    }
+
+    /**
+     * 添加指定索引位置的元素
+     *
+     * @param index 索引
+     * @param e     元素
+     */
+    public void add(int index, E e) {
+        // 检查索引是否合法
+        checkPositionIndex(index);
+
+        // 获取数组容量
+        int capacity = data.length;
+        // 检查数组容量是否足够, 不够则扩容至实际存储数组的2倍
+        if (capacity == size) {
+            resize(capacity * 2);
+        }
+
+        // 移动 index 和后面的元素，为 index 的位置腾出空间
+        for (int i = size - 1; i >= index; i--) {
+            data[i + 1] = data[i];
+        }
+
+        // 添加元素
+        data[index] = e;
+
+        // 元素个数加1
+        size++;
+    }
+
+    /**
+     * 添加第一个元素
+     *
+     * @param e 元素
+     */
+    public void addFirst(E e) {
+        add(0, e);
+    }
+
+    /**
+     * 删除最后一个元素
+     *
+     * @return 被删除的元素
+     */
+    public E removeLast() {
+        // 如果时空数组，则抛出异常
+        if (size == 0) {
+            throw new NoSuchElementException();
+        }
+
+        // 获取数组容量
+        int capacity = data.length;
+
+        // 如果可以释放空间，则释放空间
+        if (size == capacity / 4) {
+            resize(capacity / 2);
+        }
+
+        // 被删除的元素
+        E deleteVal = data[size - 1];
+
+        // 删除最后一个元素, 释放内存空间
+        data[size - 1] = null;
+        // 元素个数减1
+        size--;
+
+        return deleteVal;
+    }
+
+    /**
+     * 删除指定索引位置的元素
+     *
+     * @param index 索引
+     * @return 被删除的元素
+     */
+    public E remove(int index) {
+        // 检查索引是否合法
+        checkElementIndex(index);
+
+        // 获取数组容量
+        int capacity = data.length;
+
+        // 如果可以释放空间，则释放空间
+        if (size == capacity / 4) {
+            resize(capacity / 2);
+        }
+
+        // 被删除的元素
+        E deleteVal = data[index];
+
+        // 移动 index 之后的元素，覆盖 index 位置
+        for (int i = index + 1; i < size; i++) {
+            data[i + 1] = data[i];
+        }
+
+        // 删除最后一个元素, 释放内存空间
+        data[size - 1] = null;
+
+        // 元素个数减1
+        size--;
+
+        return deleteVal;
+    }
+
+    /**
+     * 删除第一个元素
+     *
+     * @return 被删除的元素
+     */
+    public E removeFirst() {
+        return remove(0);
+    }
+
+    /**
+     * 获取指定索引位置的元素
+     *
+     * @param index 索引
+     * @return 元素
+     */
+    public E get(int index) {
+        // 检查索引是否合法
+        checkElementIndex(index);
+
+        return data[index];
+    }
+
+    /**
+     * 修改指定索引位置的元素
+     *
+     * @param index 索引
+     * @param e     元素
+     * @return 被修改的元素
+     */
+    public E set(int index, E e) {
+        // 检查索引是否合法
+        checkElementIndex(index);
+
+        // 被修改的元素
+        E oldVal = data[index];
+
+        // 修改元素
+        data[index] = e;
+
+        return oldVal;
+    }
+
+    /**
+     * 获取数组中实际存储的元素个数
+     *
+     * @return 元素个数
+     */
+    public int size() {
+        return size;
+    }
+
+    /**
+     * 判断数组是否为空
+     *
+     * @return true/false
+     */
+    public boolean isEmpty() {
+        return size == 0;
+    }
+
+    /**
+     * 扩容
+     *
+     * @param newCapacity 新容量
+     */
+    private void resize(int newCapacity) {
+        // 创建临时数组
+        E[] temp = (E[]) new Object[newCapacity];
+
+        // 拷贝数组元素
+        for (int i = 0; i < size; i++) {
+            temp[i] = data[i];
+        }
+
+        // 释放旧数组
+        data = temp;
+    }
+
+    /**
+     * 检查 index 索引位置是否可以存在元素
+     *
+     * @param index 索引
+     */
+    private void checkElementIndex(int index) {
+        if (!isElementIndex(index)) {
+            throw new ArrayIndexOutOfBoundsException("Index: " + index + " , size: " + size);
+        }
+    }
+
+    /**
+     * 检查 index 索引位置是否可以插入元素
+     *
+     * @param index 索引
+     */
+    private void checkPositionIndex(int index) {
+        if (!isPositionIndex(index)) {
+            throw new ArrayIndexOutOfBoundsException("Index: " + index + " , size: " + size);
+        }
+    }
+
+    /**
+     * 检查 index 索引位置是否可以存在元素
+     *
+     * @param index 索引
+     * @return true/false
+     */
+    private boolean isElementIndex(int index) {
+        return index >= 0 && index < size;
+    }
+
+    /**
+     * 检查 index 索引位置是否可以插入元素
+     *
+     * @param index 索引
+     * @return true/false
+     */
+    private boolean isPositionIndex(int index) {
+        // 由于可以在 size 的位置插入元素，所以 index 必须小于等于 size
+        return index >= 0 && index <= size;
+    }
+}
+```
