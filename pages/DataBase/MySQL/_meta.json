@@ -1,0 +1,23 @@
+{
+  "01-introduce": "介绍 SQL",
+  "02-data-select": "数据选择",
+  "03-order-select": "排序选择",
+  "04-filter-data": "过滤数据",
+  "05-advance-filter-data": "高级数据过滤",
+  "06-wildcard-filter-data": "使用通配符过滤数据",
+  "07-creating-calculated-fields": "创建计算字段",
+  "08-aggregate-data": "汇总数据",
+  "09-group-data": "分组数据",
+  "10-sub-query": "子查询",
+  "11-join-table": "连接表",
+  "12-advance-join-table": "高级表连接",
+  "13-combined-query": "组合查询",
+  "14-insert-data": "插入数据",
+  "15-update-and-delete-data": "更新和删除数据",
+  "16-create-and-alter-table": "创建和修改表",
+  "17-view": "视图",
+  "18-stored-procedure": "存储过程",
+  "19-manage-transaction": "事务管理",
+  "20-cursor": "游标",
+  "21-advance-sql": "高级 SQL"
+}

@@ -13,6 +13,7 @@
   "Concurrency": "并发编程",
   "Spring": "Spring框架",
   "ORM": "ORM框架",
+  "DataBase": "数据库",
   "MQ": "消息引擎",
   "DesignPatterns": "设计模式",
   "Command": "命令手册",
