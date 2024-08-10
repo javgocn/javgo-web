@@ -1,0 +1,174 @@
+# 单/双链表
+
+一个基础的单链表可能如下：
+
+```java
+/**
+ * Desc：单链表节点
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class ListNode {
+
+    /**
+     * 节点值
+     */
+    int val;
+
+    /**
+     * 下一个节点
+     */
+    ListNode next;
+
+    public ListNode(int x) {
+        this.val = x;
+    }
+}
+```
+
+这是最简单的链表呈现形式，但是在高级编程语言中一般都是双链表，类似于下面这样：
+
+```java
+/**
+ * Desc：双链表节点
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class Node<E> {
+
+    /**
+     * 节点值
+     */
+    E val;
+
+    /**
+     * 下一个节点
+     */
+    Node<E> next;
+
+    /**
+     * 前一个节点
+     */
+    Node<E> prev;
+
+    Node(Node<E> prev, E element, Node<E> next) {
+        this.prev = prev;
+        this.val = element;
+        this.next = next;
+    }
+}
+```
+
+二者的区别如下：
+
+1. 高级语言设计时一般都会提供泛型的支持，也就是说存储的数据类型可以是任意类型；
+2. 单链表节点只有一个指向下一个节点的指针，而双链表节点除了指向下一个节点外，还有一个指向前一个节点的指针以支持双方向遍历；
+
+那么，链表存在的意义究竟是什么呢？上一节我们介绍了数组时一块连续的内存空间，大小固定。拿到了这块连续内存空间的首地址我们就可以通过计算快速得到对
+应元素的内存地址，从而实现快速随机访问。但是链表却不一样，一条链表并不需要像数组那样申请一块连续的内存空间，它可以随意分散在可用的空间中，然后通
+过每个节点维护的前驱和后继指针来维护链表的结构，从而将一个个零散分布的节点组织成一个整体，也就是链式结构。
+
+这样设计的好处也很明显，那就是充分利用内存的空间，避免浪费。还有就是对于增加和删除很友好，有需要的时候只需要改变指针即可，不需要像数组那样需要扩容。
+因此，原则上来说链表是没有容量上限的，可以约等于目前你的系统可用的内存大小。
+
+当然，既然链表避免了数组的拷贝缺陷，自然也有一定的牺牲，那就是不支持数组的随机访问，只能通过遍历的方式访问。这也不难理解，因为链表的节点是分散在
+可用空间中的，所以无法通过计算得到节点的内存地址。
+
+## 单链表的基本操作：
+
+下面是一个简单的单链表：
+
+```java
+/**
+ * Desc：单链表节点
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class ListNode {
+
+    /**
+     * 节点值
+     */
+    int val;
+
+    /**
+     * 下一个节点
+     */
+    ListNode next;
+
+    public ListNode(int x) {
+        this.val = x;
+    }
+
+    ListNode createLinkedList(int[] arr) {
+        if (arr == null || arr.length == 0) {
+            return null;
+        }
+
+        // 初始化头节点
+        ListNode head = new ListNode(arr[0]);
+        // 将头节点设置为当前节点
+        ListNode cur = head;
+
+        // 遍历数组，创建节点，并设置当前节点的下一个节点
+        for (int i = 1; i < arr.length; i++) {
+            // 下一个节点
+            cur.next = new ListNode(arr[i]);
+            // 将当前节点设置为下一个节点
+            cur = cur.next;
+        }
+
+        // 返回头节点
+        return head;
+    }
+}
+```
+
+### 查询/修改
+
+下面是一个遍历链表的例子：
+
+```java
+ListNode head = createLinkedList(new int[]{1, 2, 3, 4, 5});
+
+for (ListNode point = head; point != null; point = point.next) {
+    System.out.println(point.val);
+}
+```
+
+对于单链表，如果你想修改某个元素的值，也是只能通过遍历的方式，找到对应的节点，然后修改节点的值：
+
+```java
+// 修改链表
+for (ListNode point = head; point != null; point = point.next) {
+    if (point.val == 3) {
+        // 修改节点的值
+        point.val = 6;
+        break;
+    }
+}
+```
+
+### 增加元素
+
+```java
+// 新增元素（在单链表头部插入）
+ListNode newHead = new ListNode(0);
+// 将头节点设置为新建节点的下一个节点
+newHead.next = head;
+// 将头节点设置为新建节点
+head = newHead;
+
+
+// 新增元素（在单链表尾部插入）
+ListNode point = head;
+// 先遍历到最后一个节点
+while (point.next != null) {
+    point = point.next;
+}
+// 将最后一个节点的下一个节点设置为新建节点
+point.next = new ListNode(6);
+```

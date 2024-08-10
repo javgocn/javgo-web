@@ -1,0 +1,483 @@
+import PostImg from 'components/PostImg'
+
+# 原型模式
+
+对于熟悉 JavaScript 的前端开发者来说，原型模式（Prototype Pattern）并不陌生。JavaScript 是一种基于原型的面向对象编程语言，因此原型模式在
+其中广泛应用。即使 JavaScript 引入了类的概念，这也只是基于原型的语法糖。然而，对于 Java、C++ 等基于类的语言，原型模式在实际开发中使用得并不多。
+
+我们将通过一个克隆散列表的例子，深入探讨原型模式的应用场景及其两种实现方式：**深拷贝和浅拷贝**。虽然原型模式的原理和实现相对简单，但为了确保理解，我
+们会使用稍微复杂的例子，跟随我的思路一起探讨。
+
+## 原型模式的原理与应用
+
+原型模式的核心思想是：**当对象的创建成本较高，而同类对象之间差别不大时，可以通过复制现有对象（原型）来创建新对象，以节省创建时间**。这种基于原型
+创建对象的方式就是原型设计模式。
+
+### 对象的创建成本
+
+“对象的创建成本较高” 通常指以下几种情况：
+
+* 对象的创建需要经过复杂的计算，如排序或哈希值计算。
+* 对象的数据需要从缓慢的IO操作中获取，如网络请求、数据库读取或文件系统操作。
+
+在这些情况下，使用原型模式可以直接复制已有对象，避免每次都重复执行耗时的操作。
+
+### 克隆一个 HashMap 散列表
+
+假设我们有一个系统A，它在启动时从数据库中加载约10万条 “搜索关键词” 信息到内存中。为了快速查找某个关键词对应的信息，我们将这些数据存储在一个
+`HashMap` 中，其中 `key` 为关键词，`value` 为关键词的详细信息。
+
+另一个系统B定期更新数据库中的数据，生成新版本的数据。例如，系统B每隔10分钟更新一次数据，并将其标记为新版本。为保证系统A中的数据实时性，系统A需
+要定期更新内存中的数据。
+
+#### 初始实现
+
+一种简单的实现方式如下：
+
+```java
+public class Demo {
+
+    /**
+     * 搜索关键词
+     */
+    private ConcurrentHashMap<String, SearchWord> currentKeywords = new ConcurrentHashMap<>();
+
+    /**
+     * 刷新数据
+     */
+    public void refresh() {
+        // 从数据库中取出更新时间 > lastUpdateTime 的数据，更新到 currentKeywords 中
+        List<SearchWord> toBeUpdatedSearchWords = getSearchWords(lastUpdateTime);
+        // 暂存最新的时间戳
+        long maxNewUpdatedTime = lastUpdateTime;
+        for (SearchWord searchWord : toBeUpdatedSearchWords) {
+            // 更新时间戳
+            if (searchWord.getLastUpdateTime() > maxNewUpdatedTime) {
+                maxNewUpdatedTime = searchWord.getLastUpdateTime();
+            }
+
+            // 已经存在的数据进行更新
+            if (currentKeywords.containsKey(searchWord.getKeyword())) {
+                currentKeywords.replace(searchWord.getKeyword(), searchWord);
+            } else {
+                // 不存在的数据进行添加
+                currentKeywords.put(searchWord.getKeyword(), searchWord);
+            }
+        }
+
+        // 更新 lastUpdateTime
+        lastUpdateTime = maxNewUpdatedTime;
+    }
+
+    private List<SearchWord> getSearchWords(long lastUpdateTime) {
+        // TODO: 从数据库中取出更新时间 > lastUpdateTime 的数据
+        return null;
+    }
+
+    /**
+     * 上一次更新的时间
+     */
+    private long lastUpdateTime = -1;
+
+    // SearchWord 内部类
+    private static class SearchWord {
+        private String keyword;
+        private long lastUpdateTime;
+
+        public SearchWord(String keyword, long lastUpdateTime) {
+            this.keyword = keyword;
+            this.lastUpdateTime = lastUpdateTime;
+        }
+
+        public String getKeyword() {
+            return keyword;
+        }
+
+        public long getLastUpdateTime() {
+            return lastUpdateTime;
+        }
+    }
+}
+```
+
+这种实现可以更新散列表中的数据，但有一个特殊的要求：系统A中的所有数据必须是同一版本，且更新数据时不能影响系统的可用性。所谓 “统一版本” 是指在同
+一时间点，系统A中的数据都是同一个版本。而更新数据时，不能影响系统的可用性，是指在更新数据时，不能影响系统A中正在使用的数据。
+
+#### 引入原型模式
+
+为了满足这些要求，可以使用原型模式：
+
+* 不直接更新正在使用的数据，而是创建一个新版本的数据。
+* 构建新版本时，可以通过克隆当前版本的数据，然后更新少量变化的部分。
+
+以下是基于原型模式的实现：
+
+```java
+public class Demo02 {
+
+    /**
+     * 搜索关键词
+     */
+    private HashMap<String, SearchWord> currentKeywords = new HashMap<>();
+
+    /**
+     * 上一次更新的时间
+     */
+    private long lastUpdateTime = -1;
+
+    /**
+     * 刷新数据
+     */
+    public void refresh() {
+        // 使用原型模式克隆 currentKeywords
+        HashMap<String, SearchWord> newKeywords = (HashMap<String, SearchWord>) currentKeywords.clone();
+
+        // 从数据库中取出更新时间 > lastUpdateTime 的数据，更新到 newKeywords 中
+        List<SearchWord> toBeUpdatedSearchWords = getSearchWords(lastUpdateTime);
+        long maxNewUpdatedTime = lastUpdateTime;
+
+        for (SearchWord searchWord : toBeUpdatedSearchWords) {
+            // 更新时间戳
+            if (searchWord.getLastUpdateTime() > maxNewUpdatedTime) {
+                maxNewUpdatedTime = searchWord.getLastUpdateTime();
+            }
+
+            // 已经存在的数据进行更新
+            if (newKeywords.containsKey(searchWord.getKeyword())) {
+                // 获取旧的数据
+                SearchWord oldSearchWord = newKeywords.get(searchWord.getKeyword());
+                // 设置新的数据
+                oldSearchWord.setCount(searchWord.getCount());
+                oldSearchWord.setLastUpdateTime(searchWord.getLastUpdateTime());
+            } else {
+                // 不存在则添加
+                newKeywords.put(searchWord.getKeyword(), searchWord);
+            }
+        }
+
+        lastUpdateTime = maxNewUpdatedTime;
+        // 替换
+        currentKeywords = newKeywords;
+    }
+
+    private List<SearchWord> getSearchWords(long lastUpdateTime) {
+        // TODO: 从数据库中取出更新时间 > lastUpdateTime 的数据
+        return null;
+    }
+
+    // SearchWord 内部类
+    @Data
+    private static class SearchWord {
+        private String keyword;
+        private long lastUpdateTime;
+        private long count;
+    }
+}
+```
+
+在这段代码中，我们利用 Java 中的 `clone()` 方法快速浅克隆 `HashMap`，然后更新差异数据。这种方法大大提高了效率，因为每次更新的关键词数量相对于总数来说很少。
+
+上面的实现虽然简单，但存在潜在问题。我们需要理解两个重要概念：**深拷贝**（Deep Copy）和**浅拷贝**（Shallow Copy）。
+
+## 原型模式的实现方式：深拷贝与浅拷贝
+
+在前面我们已经讨论了如何利用原型模式来高效克隆一个 `HashMap`，特别是在需要频繁更新大规模数据时。然而，当我们深入了解浅拷贝与深拷贝的区别后，
+会发现这两者在实现和应用场景上都有显著不同，进而影响我们的设计选择。
+
+### 内存中 HashMap 的组织结构
+
+在 Java 中，`HashMap` 是一种非常高效的数据结构，它将键值对存储在散列表中。以下是 `HashMap` 组织数据的示意图：
+
+<PostImg src="https://javgo-images.oss-cn-beijing.aliyuncs.com/2024-08-10-141325.jpg" />
+
+* 散列表的每个节点（即每个键值对）包含一个 `key`，表示关键词。
+* 每个 `key` 对应的 `value` 存储的是一个 `SearchWord` 对象的引用地址，而非对象本身。
+
+### 浅拷贝与深拷贝的区别
+
+**浅拷贝** 仅复制对象的引用地址，不会复制引用对象的实际数据。在上面的例子中，使用 `clone()` 浅拷贝创建的 `newKeywords` 实际上与 `currentKeywords` 共
+享相同的 `SearchWord` 对象。
+
+<PostImg src="https://javgo-images.oss-cn-beijing.aliyuncs.com/2024-08-10-141600.jpg" />
+
+**深拷贝** 则不仅复制对象本身，还递归地复制对象所引用的所有对象。这样，`newKeywords` 和 `currentKeywords` 就完全独立，修改 `newKeywords` 中
+的 `SearchWord` 不会影响 `currentKeywords`。
+
+<PostImg src="https://javgo-images.oss-cn-beijing.aliyuncs.com/2024-08-10-141624.jpg" />
+
+### 浅拷贝的实现
+
+在 Java 中，`Object` 类的 `clone()` 方法默认实现的是浅拷贝。它只会复制 `HashMap` 中的键值对映射关系，但不会复制 `SearchWord` 对象本身：
+
+```java
+/**
+ * Desc：克隆一个HashMap散列表
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class Demo02 {
+
+    /**
+     * 搜索关键词
+     */
+    private HashMap<String, SearchWord> currentKeywords = new HashMap<>();
+
+    /**
+     * 上一次更新的时间
+     */
+    private long lastUpdateTime = -1;
+
+    /**
+     * 刷新数据
+     */
+    public void refresh() {
+        // 使用原型模式克隆 currentKeywords, Java 的 clone 方法返回的是浅拷贝
+        HashMap<String, SearchWord> newKeywords = (HashMap<String, SearchWord>) currentKeywords.clone();
+
+        // 从数据库中取出更新时间 > lastUpdateTime 的数据，更新到 newKeywords 中
+        List<SearchWord> toBeUpdatedSearchWords = getSearchWords(lastUpdateTime);
+        long maxNewUpdatedTime = lastUpdateTime;
+
+        for (SearchWord searchWord : toBeUpdatedSearchWords) {
+            // 更新时间戳
+            if (searchWord.getLastUpdateTime() > maxNewUpdatedTime) {
+                maxNewUpdatedTime = searchWord.getLastUpdateTime();
+            }
+
+            // 已经存在的数据进行更新
+            if (newKeywords.containsKey(searchWord.getKeyword())) {
+                // 获取旧的数据
+                SearchWord oldSearchWord = newKeywords.get(searchWord.getKeyword());
+                // 设置新的数据
+                oldSearchWord.setCount(searchWord.getCount());
+                oldSearchWord.setLastUpdateTime(searchWord.getLastUpdateTime());
+            } else {
+                // 不存在则添加
+                newKeywords.put(searchWord.getKeyword(), searchWord);
+            }
+        }
+
+        lastUpdateTime = maxNewUpdatedTime;
+        // 替换
+        currentKeywords = newKeywords;
+    }
+
+    private List<SearchWord> getSearchWords(long lastUpdateTime) {
+        // TODO: 从数据库中取出更新时间 > lastUpdateTime 的数据
+        return null;
+    }
+
+    // SearchWord 内部类
+    @Data
+    private static class SearchWord {
+        private String keyword;
+        private long lastUpdateTime;
+        private long count;
+    }
+}
+```
+
+在这个实现中，虽然 `newKeywords` 是 `currentKeywords` 的一个浅拷贝，但两者共享相同的 `SearchWord` 对象。因此，更新 `newKeywords` 中
+的 `SearchWord` 对象也会影响 `currentKeywords`，这就违背了我们之前要求：`currentKeywords` 在任何时刻都必须保持同一版本的数据。
+
+### 深拷贝的实现
+
+为了满足上述需求，我们需要使用深拷贝，将 `SearchWord` 对象完全复制一份：
+
+```java
+/**
+ * Desc：克隆一个HashMap散列表
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class Demo03 {
+
+    /**
+     * 搜索关键词
+     */
+    private HashMap<String, SearchWord> currentKeywords = new HashMap<>();
+
+    /**
+     * 上一次更新的时间
+     */
+    private long lastUpdateTime = -1;
+
+    /**
+     * 刷新数据
+     */
+    public void refresh() {
+        // 深拷贝 currentKeywords
+        HashMap<String, SearchWord> newKeywords = new HashMap<>();
+        for (Map.Entry<String, SearchWord> entry : currentKeywords.entrySet()) {
+            SearchWord searchWord = entry.getValue();
+            // 重新创建一个 SearchWord 对象
+            SearchWord newSearchWord = new SearchWord(searchWord.getKeyword(), searchWord.getCount(), searchWord.getLastUpdateTime());
+            newKeywords.put(entry.getKey(), newSearchWord);
+        }
+
+        // 从数据库中取出更新时间 > lastUpdateTime 的数据，更新到 newKeywords 中
+        List<SearchWord> toBeUpdatedSearchWords = getSearchWords(lastUpdateTime);
+        long maxNewUpdatedTime = lastUpdateTime;
+
+        for (SearchWord searchWord : toBeUpdatedSearchWords) {
+            // 更新时间戳
+            if (searchWord.getLastUpdateTime() > maxNewUpdatedTime) {
+                maxNewUpdatedTime = searchWord.getLastUpdateTime();
+            }
+
+            // 已经存在的数据进行更新
+            if (newKeywords.containsKey(searchWord.getKeyword())) {
+                // 获取旧的数据
+                SearchWord oldSearchWord = newKeywords.get(searchWord.getKeyword());
+                // 设置新的数据
+                oldSearchWord.setCount(searchWord.getCount());
+                oldSearchWord.setLastUpdateTime(searchWord.getLastUpdateTime());
+            } else {
+                // 不存在则添加
+                newKeywords.put(searchWord.getKeyword(), searchWord);
+            }
+        }
+
+        lastUpdateTime = maxNewUpdatedTime;
+        // 替换
+        currentKeywords = newKeywords;
+    }
+
+    private List<SearchWord> getSearchWords(long lastUpdateTime) {
+        // TODO: 从数据库中取出更新时间 > lastUpdateTime 的数据
+        return null;
+    }
+
+    // SearchWord 内部类
+    @Data
+    @AllArgsConstructor
+    private static class SearchWord {
+        private String keyword;
+        private long lastUpdateTime;
+        private long count;
+    }
+}
+```
+
+通过深拷贝，`newKeywords` 和 `currentKeywords` 之间的 `SearchWord` 对象是独立的，因此更新 `newKeywords` 中的数据不会影响 `currentKeywords`。
+
+### 使用序列化实现深拷贝
+
+另一种实现深拷贝的方法是使用序列化和反序列化：
+
+```java
+/**
+ * 深拷贝 - 使用序列化和反序列化
+ * 通过将对象序列化为字节数组，然后通过反序列化生成新的对象实例，实现深拷贝
+ * 这种方法适用于实现 Serializable 接口的对象
+ *
+ * @param object 待拷贝的对象
+ * @return 拷贝后的对象
+ * @throws IOException IO 异常
+ * @throws ClassNotFoundException 类未找到异常
+ */
+public Object deepCopy(Object object) throws IOException, ClassNotFoundException {
+    // 使用ByteArrayOutputStream临时存储序列化后的对象数据
+    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+    // 创建ObjectOutputStream，用于将对象序列化
+    ObjectOutputStream oos = new ObjectOutputStream(bos);
+
+    // 将对象序列化并写入ByteArrayOutputStream
+    oos.writeObject(object);
+    oos.flush();
+
+    // 使用ByteArrayInputStream读取序列化后的对象数据
+    ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
+    // 创建ObjectInputStream，用于将序列化数据反序列化为对象
+    ObjectInputStream ois = new ObjectInputStream(bis);
+    // 返回反序列化后的对象
+    return ois.readObject();
+}
+```
+
+这种方式通过将对象序列化为字节流，再将字节流反序列化为新的对象，从而实现深拷贝。不过，这种方法相比直接递归拷贝，通常会更耗时且占用更多内存。
+
+### 混合使用浅拷贝与深拷贝
+
+在实际应用中，为了兼顾性能与数据一致性，可以采用一种混合策略：
+
+* 首先对整个散列表进行浅拷贝，这样可以快速复制整个 `HashMap`。
+* 对于需要更新的少数对象，进行深拷贝。
+
+这种策略的优势是，在大部分数据不变的情况下，充分利用浅拷贝的高效性，同时也保证了更新数据的独立性：
+
+```java
+/**
+ * Desc：克隆一个HashMap散列表
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class Demo04 {
+
+    /**
+     * 搜索关键词
+     */
+    private HashMap<String, SearchWord> currentKeywords = new HashMap<>();
+
+    /**
+     * 上一次更新的时间
+     */
+    private long lastUpdateTime = -1;
+
+    /**
+     * 刷新数据
+     */
+    public void refresh() {
+        // 浅拷贝 currentKeywords
+        HashMap<String, SearchWord> newKeywords = (HashMap<String, SearchWord>) currentKeywords.clone();
+
+        // 从数据库中取出更新时间 > lastUpdateTime 的数据，更新到 newKeywords 中
+        List<SearchWord> toBeUpdatedSearchWords = getSearchWords(lastUpdateTime);
+        long maxNewUpdatedTime = lastUpdateTime;
+
+        for (SearchWord searchWord : toBeUpdatedSearchWords) {
+            // 更新时间戳
+            if (searchWord.getLastUpdateTime() > maxNewUpdatedTime) {
+                maxNewUpdatedTime = searchWord.getLastUpdateTime();
+            }
+
+            // 已经存在的数据进行更新
+            if (newKeywords.containsKey(searchWord.getKeyword())) {
+                // 深拷贝需要更新的对象
+                SearchWord oldSearchWord = new SearchWord(searchWord.getKeyword(), searchWord.getCount(), searchWord.getLastUpdateTime());
+                newKeywords.put(searchWord.getKeyword(), oldSearchWord);
+            } else {
+                // 不存在则添加
+                newKeywords.put(searchWord.getKeyword(), searchWord);
+            }
+        }
+
+        lastUpdateTime = maxNewUpdatedTime;
+        // 替换
+        currentKeywords = newKeywords;
+    }
+
+    private List<SearchWord> getSearchWords(long lastUpdateTime) {
+        // TODO: 从数据库中取出更新时间 > lastUpdateTime 的数据
+        return null;
+    }
+
+    // SearchWord 内部类
+    @Data
+    @AllArgsConstructor
+    private static class SearchWord {
+        private String keyword;
+        private long lastUpdateTime;
+        private long count;
+    }
+}
+```
+
+> Note:
+> 在实现原型模式时，选择浅拷贝还是深拷贝取决于具体的需求和性能考虑。浅拷贝更快、更省内存，但会共享引用对象，适合对象之间差别很小的场景。深拷贝
+> 则创建完全独立的对象，适用于需要确保数据独立性的场景。混合使用浅拷贝和深拷贝，既能提高性能，又能确保数据的一致性，是一种高效的实践方式。通过
+> 这种策略，我们可以在需要频繁更新大规模数据时，实现既快速又可靠的克隆操作。
+

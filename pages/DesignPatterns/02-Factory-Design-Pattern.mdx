@@ -1,0 +1,1123 @@
+# 工厂模式
+
+在设计模式的范畴内，工厂模式（Factory Design Pattern）是一种非常常用的创建型模式。它的主要作用是**将对象的创建过程与使用过程分离**，从而使代码更
+加灵活、可维护性更强。工厂模式在软件开发中被广泛应用，尤其是在需要灵活配置和动态创建对象的场景中。一般来说，工厂模式可以细分为三种类型：简单工厂模式、
+工厂方法模式和抽象工厂模式。
+
+## 简单工厂模式
+
+简单工厂模式（Simple Factory）是工厂模式中最基本的一种，它通过一个工厂类，根据不同的条件，动态创建所需的对象。
+
+假设我们有一个配置文件解析器，根据文件的不同格式（如JSON、XML、YAML、Properties），选择不同的解析器类来将文件内容解析为内存对象。在传统的实现
+方式中，可能会通过一系列的 `if-else` 语句来根据文件格式选择解析器，如下所示：
+
+```java
+/**
+ * Desc：简单工厂 - 解析器工厂
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class RuleConfigSource {
+
+    public RuleConfig load(String ruleConfigFilePath) {
+        // 获取文件扩展名
+        String ruleConfigFileExtension = getFileExtension(ruleConfigFilePath);
+
+        // 初始化解析器
+        IRuleConfigParser parser = null;
+        if ("json".equalsIgnoreCase(ruleConfigFileExtension)) {
+            parser = new JsonRuleConfigParser();
+        } else if ("xml".equalsIgnoreCase(ruleConfigFileExtension)) {
+            parser = new XmlRuleConfigParser();
+        } else if ("yaml".equalsIgnoreCase(ruleConfigFileExtension)) {
+            parser = new YamlRuleConfigParser();
+        } else if ("properties".equalsIgnoreCase(ruleConfigFileExtension)) {
+            parser = new PropertiesRuleConfigParser();
+        } else {
+            throw new RuntimeException("Rule config file format is not supported: " + ruleConfigFilePath);
+        }
+
+        // 从 ruleConfigFilePath 文件中读取配置文本到 configText 中
+        String configText = "";
+        return parser.parse(configText);
+    }
+
+    private String getFileExtension(String filePath) {
+        // 解析文件名获取扩展名，比如rule.json，返回json
+        return "json";
+    }
+}
+```
+
+```java
+/**
+ * Desc：规则配置
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+@Data
+public class RuleConfig {
+
+    /**
+     * 规则配置文件路径
+     */
+    private String ruleConfigFilePath;
+}
+```
+
+```java
+/**
+ * Desc：规则解析策略
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public interface IRuleConfigParser {
+
+    /**
+     * 解析规则
+     *
+     * @param configText 规则文本
+     * @return 规则
+     */
+    RuleConfig parse(String configText);
+}
+```
+
+```java
+/**
+ * Desc：JSON 解析器
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class JsonRuleConfigParser implements IRuleConfigParser {
+
+    @Override
+    public RuleConfig parse(String configText) {
+        return null;
+    }
+}
+
+/**
+ * Desc：Properties 解析器
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class PropertiesRuleConfigParser implements IRuleConfigParser {
+
+    @Override
+    public RuleConfig parse(String configText) {
+        return null;
+    }
+}
+
+/**
+ * Desc：XML 解析器
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class XmlRuleConfigParser implements IRuleConfigParser {
+
+    @Override
+    public RuleConfig parse(String configText) {
+        return null;
+    }
+}
+
+/**
+ * Desc：YAML 解析器
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class YamlRuleConfigParser implements IRuleConfigParser {
+
+    @Override
+    public RuleConfig parse(String configText) {
+        return null;
+    }
+}
+```
+
+这种实现方式虽然直观，但随着解析器种类的增加，`if-else` 语句会变得越来越复杂。为了提高代码的可维护性和扩展性，我们可以使用简单工厂模式，将解析器的
+创建逻辑抽象到一个独立的工厂类中：
+
+```java
+/**
+ * Desc：简单工厂
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class RuleConfigParserFactory {
+
+    // 由工厂统一创建解析器
+    public static IRuleConfigParser createParser(String configFormat) {
+        IRuleConfigParser parser = null;
+        if ("json".equalsIgnoreCase(configFormat)) {
+            parser = new JsonRuleConfigParser();
+        } else if ("xml".equalsIgnoreCase(configFormat)) {
+            parser = new XmlRuleConfigParser();
+        } else if ("yaml".equalsIgnoreCase(configFormat)) {
+            parser = new YamlRuleConfigParser();
+        } else if ("properties".equalsIgnoreCase(configFormat)) {
+            parser = new PropertiesRuleConfigParser();
+        }
+        return parser;
+    }
+}
+```
+
+在这种实现方式中，解析器的创建被集中管理在 `RuleConfigParserFactory` 类中，`RuleConfigSource` 类只需要调用工厂类的方法来获取解析器：
+
+```java
+public class RuleConfigSource {
+
+    public RuleConfig load(String ruleConfigFilePath) {
+        // 获取文件扩展名
+        String ruleConfigFileExtension = getFileExtension(ruleConfigFilePath);
+
+        // 初始化解析器
+        IRuleConfigParser parser = RuleConfigParserFactory.createParser(ruleConfigFileExtension);
+        if (parser == null) {
+            throw new RuntimeException("Rule config file format is not supported: " + ruleConfigFilePath);
+        }
+
+//        下面的 if-else 逻辑被移到工厂类中，由工厂类统一创建解析器
+//        if ("json".equalsIgnoreCase(ruleConfigFileExtension)) {
+//            parser = new JsonRuleConfigParser();
+//        } else if ("xml".equalsIgnoreCase(ruleConfigFileExtension)) {
+//            parser = new XmlRuleConfigParser();
+//        } else if ("yaml".equalsIgnoreCase(ruleConfigFileExtension)) {
+//            parser = new YamlRuleConfigParser();
+//        } else if ("properties".equalsIgnoreCase(ruleConfigFileExtension)) {
+//            parser = new PropertiesRuleConfigParser();
+//        } else {
+//            throw new RuntimeException("Rule config file format is not supported: " + ruleConfigFilePath);
+//        }
+
+        // 从 ruleConfigFilePath 文件中读取配置文本到 configText 中
+        String configText = "";
+        return parser.parse(configText);
+    }
+
+    private String getFileExtension(String filePath) {
+        // 解析文件名获取扩展名，比如rule.json，返回json
+        return "json";
+    }
+}
+```
+
+在上述实现中，每次调用 `createParser()` 方法时都会创建一个新的解析器实例。如果解析器是可以复用的，则可以通过缓存的方式优化对象创建，避免重复实例化，提高性能：
+
+```java
+public class RuleConfigParserFactory {
+
+    private static final Map<String, IRuleConfigParser> cachedParsers = new HashMap<>();
+
+    // 类加载时就初始化好，便于复用
+    static {
+        cachedParsers.put("json", new JsonRuleConfigParser());
+        cachedParsers.put("xml", new XmlRuleConfigParser());
+        cachedParsers.put("yaml", new YamlRuleConfigParser());
+        cachedParsers.put("properties", new PropertiesRuleConfigParser());
+    }
+
+    public static IRuleConfigParser createParser(String configFormat) {
+//        用 cachedParsers 避免每次都创建新的解析器，避免重复创建
+//        IRuleConfigParser parser = null;
+//        if ("json".equalsIgnoreCase(configFormat)) {
+//            parser = new JsonRuleConfigParser();
+//        } else if ("xml".equalsIgnoreCase(configFormat)) {
+//            parser = new XmlRuleConfigParser();
+//        } else if ("yaml".equalsIgnoreCase(configFormat)) {
+//            parser = new YamlRuleConfigParser();
+//        } else if ("properties".equalsIgnoreCase(configFormat)) {
+//            parser = new PropertiesRuleConfigParser();
+//        }
+//        return parser;
+
+        if (configFormat == null || configFormat.isEmpty()) {
+            return null; // 返回null或抛出异常均可，根据具体需求决定
+        }
+        return cachedParsers.get(configFormat.toLowerCase());
+    }
+}
+```
+
+通过这种方式，我们不仅遵循了工厂模式的设计理念，还结合了单例模式的思想，进一步提升了代码的效率和性能。
+
+## 工厂方法模式
+
+工厂方法模式（Factory Method）是一种通过引入多态机制，**将对象的创建过程延迟到子类中完成**的设计模式。相比于简单工厂模式，工厂方法模式更加符
+合开闭原则，即在无需修改现有代码的情况下，能够方便地扩展新的功能。在实际开发中，如果对象的创建逻辑较为复杂，或者我们需要避免 `if-else` 分支逻辑，
+工厂方法模式通常是更好的选择。
+
+我们之前讨论了如何使用简单工厂模式来创建不同类型的解析器，但这种方法在新增解析器类型时，需要修改工厂类的代码，不符合开闭原则。如果我们要完全去除
+ `if-else` 分支逻辑，可以使用多态来实现，这就是工厂方法模式的核心思想。
+
+下面是工厂方法模式的典型代码实现：
+
+```java
+/**
+ * Desc：工厂方法
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public interface IRuleConfigParserFactory {
+
+    IRuleConfigParser createParser();
+}
+
+/**
+ * Desc：JSON 解析工厂
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class JsonRuleConfigParserFactory implements IRuleConfigParserFactory {
+    @Override
+    public IRuleConfigParser createParser() {
+        return new JsonRuleConfigParser();
+    }
+}
+
+/**
+ * Desc：Properties 解析工厂
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class PropertiesRuleConfigParserFactory implements IRuleConfigParserFactory {
+    @Override
+    public IRuleConfigParser createParser() {
+        return new JsonRuleConfigParser();
+    }
+}
+
+/**
+ * Desc：XML 解析工厂
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class XmlRuleConfigParserFactory implements IRuleConfigParserFactory {
+    @Override
+    public IRuleConfigParser createParser() {
+        return new JsonRuleConfigParser();
+    }
+}
+
+/**
+ * Desc：Yaml 解析工厂
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class YamlRuleConfigParserFactory implements IRuleConfigParserFactory {
+    @Override
+    public IRuleConfigParser createParser() {
+        return new JsonRuleConfigParser();
+    }
+}
+```
+
+在这个实现中，每个解析器工厂类都实现了 `IRuleConfigParserFactory` 接口，并各自负责创建对应类型的解析器对象。当我们需要新增解析器类型时，只需添加
+一个新的工厂类，无需修改现有代码，达到了扩展性和开闭原则的要求。
+
+虽然工厂方法模式通过多态解决了 `if-else` 分支逻辑的问题，但在实际应用中，我们仍然需要面临工厂类对象的创建问题。具体地说，当我们在
+ `RuleConfigSource` 的 `load()` 方法中使用这些工厂类时，仍然需要根据文件类型选择对应的工厂类，这导致了原本希望避免的 `if-else` 逻辑再次出现。
+
+```java
+public class RuleConfigSource {
+
+    public RuleConfig load(String ruleConfigFilePath) {
+        String ruleConfigFileExtension = getFileExtension(ruleConfigFilePath);
+
+        // if-else 重现江湖
+        IRuleConfigParserFactory parserFactory = null;
+        if ("json".equalsIgnoreCase(ruleConfigFileExtension)) {
+            parserFactory = new JsonRuleConfigParserFactory();
+        } else if ("xml".equalsIgnoreCase(ruleConfigFileExtension)) {
+            parserFactory = new XmlRuleConfigParserFactory();
+        } else if ("yaml".equalsIgnoreCase(ruleConfigFileExtension)) {
+            parserFactory = new YamlRuleConfigParserFactory();
+        } else if ("properties".equalsIgnoreCase(ruleConfigFileExtension)) {
+            parserFactory = new PropertiesRuleConfigParserFactory();
+        } else {
+            throw new RuntimeException("Rule config file format is not supported: " + ruleConfigFilePath);
+        }
+        IRuleConfigParser parser = parserFactory.createParser();
+
+        // 从 ruleConfigFilePath 文件中读取配置文本到 configText 中
+        String configText = "";
+        return parser.parse(configText);
+    }
+
+    private String getFileExtension(String filePath) {
+        // 解析文件名获取扩展名，比如rule.json，返回json
+        return "json";
+    }
+}
+```
+
+如上所示，工厂类的选择逻辑仍然耦合在 `load()` 方法中，违背了我们使用工厂方法模式的初衷。
+
+为了解决这个问题，我们可以引入一个 “工厂的工厂”（Factory of Factories），即再创建一个简单工厂，用于生成具体的工厂类对象。这种设计看似复杂，
+但却能有效地将工厂类的选择逻辑从业务代码中抽离出来。
+
+```java
+/**
+ * Desc：工厂的工厂，用于生成解析器工厂对象
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class RuleConfigParserFactoryMap {
+
+    private static final Map<String, IRuleConfigParserFactory> cachedFactories = new HashMap<>();
+
+    static {
+        cachedFactories.put("json", new JsonRuleConfigParserFactory());
+        cachedFactories.put("xml", new XmlRuleConfigParserFactory());
+        cachedFactories.put("yaml", new YamlRuleConfigParserFactory());
+        cachedFactories.put("properties", new PropertiesRuleConfigParserFactory());
+    }
+
+    public static IRuleConfigParserFactory getParserFactory(String type) {
+        if (type == null || type.isEmpty()) {
+            return null;
+        }
+        return cachedFactories.get(type.toLowerCase());
+    }
+}
+```
+
+这样我们就可以通过 `RuleConfigParserFactoryMap` 获取到对应的工厂类对象，从而避免了 `if-else` 逻辑。
+
+```java
+/**
+ * Desc：工厂方法 - 解析器工厂
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class RuleConfigSource {
+
+    public RuleConfig load(String ruleConfigFilePath) {
+        String ruleConfigFileExtension = getFileExtension(ruleConfigFilePath);
+
+        // if-else 重现江湖
+//        IRuleConfigParserFactory parserFactory = null;
+//        if ("json".equalsIgnoreCase(ruleConfigFileExtension)) {
+//            parserFactory = new JsonRuleConfigParserFactory();
+//        } else if ("xml".equalsIgnoreCase(ruleConfigFileExtension)) {
+//            parserFactory = new XmlRuleConfigParserFactory();
+//        } else if ("yaml".equalsIgnoreCase(ruleConfigFileExtension)) {
+//            parserFactory = new YamlRuleConfigParserFactory();
+//        } else if ("properties".equalsIgnoreCase(ruleConfigFileExtension)) {
+//            parserFactory = new PropertiesRuleConfigParserFactory();
+//        } else {
+//            throw new RuntimeException("Rule config file format is not supported: " + ruleConfigFilePath);
+//        }
+
+        // 工厂的工厂，消除 load 的 if-else
+        IRuleConfigParserFactory parserFactory = RuleConfigParserFactoryMap.getParserFactory(ruleConfigFileExtension);
+        IRuleConfigParser parser = parserFactory.createParser();
+
+        // 从 ruleConfigFilePath 文件中读取配置文本到 configText 中
+        String configText = "";
+        return parser.parse(configText);
+    }
+
+    private String getFileExtension(String filePath) {
+        // 解析文件名获取扩展名，比如rule.json，返回json
+        return "json";
+    }
+}
+```
+
+通过这种设计，我们将工厂类的选择逻辑封装在 `RuleConfigParserFactoryMap` 类中，实现了业务代码与工厂创建逻辑的完全解耦。当我们需要新增解析器
+类型时，只需扩展 `RuleConfigParserFactoryMap` 的工厂缓存即可，无需修改原有的业务代码，充分符合开闭原则。
+
+## 抽象工厂模式
+
+抽象工厂模式（Abstract Factory）是一种创建型设计模式，它通过一个接口来创建一系列相关或互相依赖的对象，而无需指定它们的具体类。与工厂方法模式
+相比，**抽象工厂模式更适用于对象有多种分类维度的场景**。例如，如果我们需要创建多种类型的对象，这些对象还可能按照不同的分类维度来区分，那么抽象
+工厂模式将是一个更好的选择。
+
+> TIP: 抽象工厂模式的适用场景
+> 抽象工厂模式的典型应用场景是当类具有多种分类方式时，如我们前面提到的解析器例子。假设我们有两种不同的配置类型：规则配置（Rule）和系统配置（System），
+> 同时这些配置又可以分别按格式（Json、Xml、Yaml、Properties）来分类。如果我们按照简单工厂模式或工厂方法模式来处理，每种配置类型和格式组合都会对应
+> 一个解析器类，并且每个解析器类都会有对应的工厂类。这种情况下，工厂类的数量将急剧增加，导致系统复杂性上升。
+
+通过引入抽象工厂模式，我们可以创建一个工厂类，它能够生成多个不同类型的解析器，从而减少工厂类的数量。例如，针对前述的规则配置和系统配置解析器，我
+们可以实现一个抽象工厂接口 `IConfigParserFactory`，并为每种格式（如 Json、Xml）提供具体的工厂实现。具体代码如下：
+
+```java
+// 抽象工厂接口，定义了创建不同类型解析器的方法
+public interface IConfigParserFactory {
+  IRuleConfigParser createRuleParser();
+  ISystemConfigParser createSystemParser();
+
+  // 可以扩展新的解析器类型，比如IBizConfigParser
+}
+
+// 具体工厂类实现，负责创建Json格式的解析器
+public class JsonConfigParserFactory implements IConfigParserFactory {
+  @Override
+  public IRuleConfigParser createRuleParser() {
+    return new JsonRuleConfigParser();
+  }
+
+  @Override
+  public ISystemConfigParser createSystemParser() {
+    return new JsonSystemConfigParser();
+  }
+}
+
+// 具体工厂类实现，负责创建Xml格式的解析器
+public class XmlConfigParserFactory implements IConfigParserFactory {
+  @Override
+  public IRuleConfigParser createRuleParser() {
+    return new XmlRuleConfigParser();
+  }
+
+  @Override
+  public ISystemConfigParser createSystemParser() {
+    return new XmlSystemConfigParser();
+  }
+}
+
+// 省略 YamlConfigParserFactory 和 PropertiesConfigParserFactory 的代码
+```
+
+当我们需要在应用程序中使用这些工厂时，只需选择合适的工厂类，然后调用相应的方法来创建所需的解析器。例如：
+
+```java
+public class ConfigSource {
+  public RuleConfig loadRuleConfig(String configFilePath) {
+    String fileExtension = getFileExtension(configFilePath);
+
+    // 选择合适的工厂类
+    IConfigParserFactory parserFactory = ConfigParserFactoryMap.getFactory(fileExtension);
+    if (parserFactory == null) {
+      throw new InvalidConfigException("Unsupported config file format: " + configFilePath);
+    }
+
+    // 调用相应的方法来创建所需的解析器
+    IRuleConfigParser parser = parserFactory.createRuleParser();
+
+    String configText = ""; // 从文件中读取配置文本
+    return parser.parse(configText);
+  }
+
+  public SystemConfig loadSystemConfig(String configFilePath) {
+    String fileExtension = getFileExtension(configFilePath);
+
+    // 选择合适的工厂类
+    IConfigParserFactory parserFactory = ConfigParserFactoryMap.getFactory(fileExtension);
+    if (parserFactory == null) {
+      throw new InvalidConfigException("Unsupported config file format: " + configFilePath);
+    }
+
+    // 调用相应的方法来创建所需的解析器
+    ISystemConfigParser parser = parserFactory.createSystemParser();
+
+    String configText = ""; // 从文件中读取配置文本
+    return parser.parse(configText);
+  }
+
+  private String getFileExtension(String filePath) {
+    // 获取文件扩展名，例如rule.json返回json
+    return "json";
+  }
+}
+
+// 工厂的工厂，用于管理具体工厂类的映射
+public class ConfigParserFactoryMap {
+  private static final Map<String, IConfigParserFactory> cachedFactories = new HashMap<>();
+
+  static {
+    cachedFactories.put("json", new JsonConfigParserFactory());
+    cachedFactories.put("xml", new XmlConfigParserFactory());
+    cachedFactories.put("yaml", new YamlConfigParserFactory());
+    cachedFactories.put("properties", new PropertiesConfigParserFactory());
+  }
+
+  public static IConfigParserFactory getFactory(String type) {
+    if (type == null || type.isEmpty()) {
+      return null;
+    }
+    return cachedFactories.get(type.toLowerCase());
+  }
+}
+```
+
+在这个实现中，`ConfigSource` 类可以根据文件的扩展名选择合适的工厂，并创建出相应的解析器对象。抽象工厂模式使得我们能够通过统一的工厂接口来管理多个
+不同类型的解析器，并且扩展新的解析器类型时，只需添加新的工厂实现和解析器类，而无需修改已有的代码，符合开闭原则。
+
+## Simple Factory VS Factory Method VS Abstract Factory
+
+### 简单工厂模式
+
+简单工厂模式是最基础的一种工厂模式，它通过一个工厂类，根据传入的参数创建并返回不同类型的对象。这个工厂类通常包含一个静态方法，用于创建对象。
+
+优点：
+
+* 实现简单：简单工厂模式的实现逻辑清晰易懂，只需要一个工厂类来创建各种对象。
+* 集中管理：对象创建逻辑集中在一个工厂类中，方便管理和修改。
+
+缺点：
+
+* 不符合开闭原则：如果需要增加新的产品类型，必须修改工厂类的代码，从而违反开闭原则。
+* 单一职责问题：工厂类负责所有产品对象的创建，职责较多，可能导致工厂类过于复杂。
+
+适用场景：
+
+* 当产品的种类比较少且不频繁变化时，可以使用简单工厂模式。
+* 产品的创建逻辑简单，且无需其他复杂的初始化操作时，简单工厂模式是一个很好的选择。
+
+### 工厂方法模式
+
+工厂方法模式通过定义一个抽象的工厂接口，让子类决定实例化哪个类，从而将对象的创建过程延迟到子类中完成。每个具体的工厂类负责创建一种具体的产品。
+
+优点：
+
+* 符合开闭原则：新增产品时，只需要增加新的具体工厂类和产品类，无需修改现有代码。
+* 高内聚低耦合：每个工厂类只负责一种产品的创建，职责明确。
+
+缺点：
+
+* 类的数量增加：每增加一种新产品，都需要添加对应的具体工厂类，可能导致系统中类的数量增多。
+* 代码复杂度提升：相较于简单工厂模式，工厂方法模式需要更多的代码来实现。
+
+适用场景：
+
+* 当系统中的产品有多种类型，需要频繁增加或修改产品时，使用工厂方法模式更为合适。
+* 当对象的创建逻辑复杂，需要通过不同的工厂类来分别管理时，可以使用工厂方法模式。
+
+### 抽象工厂模式
+
+抽象工厂模式提供了一个接口，用于创建一系列相关或依赖的对象，而无需指定它们的具体类。它是多个工厂方法模式的组合，用于处理有多种分类维度的产品创建。
+
+优点：
+
+* 产品族管理：可以创建一组相关或依赖的对象，确保一系列对象的创建过程一致。
+* 符合开闭原则：通过新增具体的工厂类和产品类，可以方便地扩展新的产品族或产品种类。
+
+缺点：
+
+* 实现复杂：抽象工厂模式引入了更多的类和接口，增加了系统的复杂性。
+* 不易维护：由于涉及多个工厂和产品接口，系统结构可能变得复杂，维护难度加大。
+
+适用场景：
+
+* 当产品有多种分类维度时（如格式和类型），抽象工厂模式可以有效管理不同类型和族的产品对象。
+* 当需要保证一组相关产品的一致性时（如UI主题的控件），使用抽象工厂模式可以确保产品对象的一致性。
+
+## 实战：设计实现一个 Dependency Injection 框架
+
+前面，我们讨论了在对象创建过程复杂时，如何使用工厂模式来简化对象的创建和使用。通过将对象的创建与使用分离，工厂模式让代码更加清晰和可维护。然而，
+当对象创建变得更加复杂，特别是涉及多个类对象的依赖关系时，工厂模式可能不够强大。在这种情况下，我们需要依赖注入框架（Dependency Injection Framework），
+通常简称为DI容器（Dependency Injection Container）。
+
+我们将围绕以下几个问题展开讨论：
+
+1. DI容器与工厂模式的区别与联系是什么？
+2. DI容器的核心功能有哪些？
+3. 如何实现一个简单的DI容器？
+
+### 工厂模式与DI容器的区别与联系
+
+工厂模式是一种创建对象的设计模式，它通过封装对象的创建过程，减少客户端代码对具体类的依赖。当对象的创建涉及复杂的逻辑时，如多条件分支或多个对象的
+组合，工厂模式能够提供良好的解决方案。
+
+DI容器的核心思想实际上是基于工厂模式的。可以将DI容器视为一个超级工厂类，它不仅负责创建对象，还负责管理对象的依赖关系和生命周期。在应用程序启动时，
+DI容器根据配置文件或代码中的元数据，事先创建并管理好各种对象。当应用程序需要使用某个对象时，直接从容器中获取即可。这种方式大大简化了对象管理，并
+提高了代码的可维护性。
+
+与传统工厂模式相比，DI容器处理的对象创建过程更加全面和复杂。传统工厂模式通常只负责创建某一类或一组相关类的对象，而DI容器则负责整个应用程序中所有
+类对象的创建。此外，DI容器还涉及配置解析、对象生命周期管理等功能，远超出单纯的对象创建。
+
+DI容器与工厂模式在本质上有着紧密的联系。DI容器可以看作是工厂模式的一个扩展，它不仅负责创建对象，还提供了更强大的功能，如依赖注入、对象生命周期管
+理等。工厂模式是DI容器实现的基础，而DI容器则是工厂模式在更复杂场景中的应用。
+
+### DI容器的核心功能
+
+一个简单的DI容器通常包含以下三个核心功能：
+
+1. 配置解析
+2. 对象创建
+3. 对象生命周期管理
+
+#### 配置解析
+
+在传统的工厂模式中，工厂类创建的对象类型通常是硬编码的。然而，在一个通用的DI容器中，框架代码与应用代码应该高度解耦，框架不应预先知道具体需要创建
+哪些对象。这就需要通过配置文件或注解等形式，让应用程序告知DI容器需要创建哪些对象，以及这些对象之间的依赖关系。
+
+以下是一个典型的 Spring 容器配置文件（beans.xml），描述了如何通过配置文件来告知DI容器需要创建的对象及其依赖关系：
+
+```xml
+<beans>
+    <bean id="rateLimiter" class="cn.javgo.javgo.design.factory.demo.RateLimiter">
+        <constructor-arg ref="redisCounter"/>
+    </bean>
+
+    <bean id="redisCounter" class="cn.javgo.javgo.design.factory.demo.RedisCounter">
+        <constructor-arg type="String" value="127.0.0.1"/>
+        <constructor-arg type="int" value="1234"/>
+    </bean>
+</beans>
+```
+
+在这个配置中，DI容器会解析出两个对象 `rateLimiter` 和 `redisCounter`，并且了解 `rateLimiter` 依赖于 `redisCounter`。
+
+#### 对象创建
+
+在DI容器中，创建对象的方式与传统工厂模式略有不同。传统工厂模式中，每个类通常有一个专门的工厂类负责创建对象，而在DI容器中，我们将所有类对象的创建
+逻辑集中到一个工厂类中，如 `BeansFactory`。这个工厂类通过反射机制，在运行时动态加载类并创建对象，从而避免了硬编码带来的维护负担。
+
+反射是一种强大的机制，允许程序在运行时获取关于类的信息，并创建实例。这意味着即使需要创建的对象数量非常多，工厂类的代码量也不会线性增长，因为所有
+的创建过程都是动态完成的。
+
+#### 对象生命周期管理
+
+DI容器不仅负责对象的创建，还需要管理对象的生命周期。在 Spring 框架中，我们可以通过配置 `scope` 属性来指定对象的生命周期。例如，`scope=prototype`
+表示每次请求都创建一个新对象，`scope=singleton` 表示返回同一个单例对象。
+
+除此之外，DI容器还可以管理对象的懒加载（lazy-init）和初始化方法（init-method）以及销毁方法（destroy-method）。
+
+### 代码实现
+
+#### 最小原型设计
+
+我们首先构建了一个最小原型设计，支持 XML 格式的配置文件，定义了需要创建的 Bean 及其依赖关系。这个配置文件只支持基本的 Bean 定义和简单的属性，
+如 `constructor-arg`、`scope` 和 `lazy-init`。下面我们将从执行入口开始，逐步实现各个部分。
+
+配置文件 beans.xml
+
+```xml
+<beans>
+    <bean id="rateLimiter" class="cn.javgo.javgo.design.factory.demo.RateLimiter">
+        <constructor-arg ref="redisCounter"/>
+    </bean>
+
+    <bean id="redisCounter" class="cn.javgo.javgo.design.factory.demo.RedisCounter" scope="singleton" lazy-init="true">
+        <constructor-arg type="String" value="127.0.0.1"/>
+        <constructor-arg type="int" value="1234"/>
+    </bean>
+</beans>
+```
+
+Bean 定义类:
+
+```java
+public class RateLimiter {
+
+    /**
+     * 依赖 RedisCounter
+     */
+    private RedisCounter redisCounter;
+
+    public RateLimiter(RedisCounter redisCounter) {
+        this.redisCounter = redisCounter;
+    }
+
+    public void test() {
+        System.out.println("Hello World!");
+    }
+
+    //...
+}
+
+public class RedisCounter {
+
+    private String ipAddress;
+
+    private int port;
+
+    public RedisCounter(String ipAddress, int port) {
+        this.ipAddress = ipAddress;
+        this.port = port;
+    }
+
+    //...
+}
+```
+
+最小原型的使用方式和 Spring 框架的 DI 容器基本一致，通过 `BeansFactory` 类的静态方法 `getBean` 来获取对象实例。
+
+```java
+public static void main(String[] args) {
+    // 获取 Spring 上下文
+    ApplicationContext applicationContext = new ClassPathXmlApplicationContext("factory/beans.xml");
+    // 获取 RateLimiter 对象
+    RateLimiter rateLimiter = (RateLimiter) applicationContext.getBean("rateLimiter");
+    rateLimiter.test();
+}
+```
+
+#### 提供执行入口
+
+`ApplicationContext` 接口是DI容器的核心，它定义了获取 Bean 的方法。`ClassPathXmlApplicationContext` 是这个接口的具体实现，负责加载配
+置文件，解析 Bean 定义，并通过 `BeansFactory` 创建和管理 Bean。
+
+```java
+/**
+ * Desc：应用上下文接口
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public interface ApplicationContext {
+
+    /**
+     * 获取 bean
+     * @param beanId bean name
+     * @return bean
+     */
+    Object getBean(String beanId);
+}
+```
+
+```java
+/**
+ * Desc：基于 XML 的 ApplicationContext 实现
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class ClassPathXmlApplicationContext implements ApplicationContext{
+
+    private BeansFactory beansFactory;
+
+    private BeanConfigParser beanConfigParser;
+
+    public ClassPathXmlApplicationContext(String configLocation) {
+        this.beansFactory = new BeansFactory();
+        this.beanConfigParser = new XmlBeanConfigParser();
+        loadBeanDefinitions(configLocation);
+    }
+
+    /**
+     * 加载 Bean 配置
+     *
+     * @param configLocation 配置文件路径
+     */
+    private void loadBeanDefinitions(String configLocation) {
+        try (InputStream in = this.getClass().getResourceAsStream("/" + configLocation)) {
+            // 获取配置文件
+            if (in == null) {
+                throw new RuntimeException("can not find config file: " + configLocation);
+            }
+
+            // 解析配置文件
+            List<BeanDefinition> beanDefinitions = beanConfigParser.parse(configLocation);
+            // 添加到 BeansFactory
+            beansFactory.addBeanDefinitions(beanDefinitions);
+        } catch (IOException e) {
+            // TODO: log error
+        }
+    }
+
+    @Override
+    public Object getBean(String beanId) {
+        return beansFactory.getBean(beanId);
+    }
+}
+```
+
+#### 配置文件解析
+
+配置文件解析部分主要涉及 `BeanConfigParser` 接口及其 `XmlBeanConfigParser` 实现类。这个模块的职责是将XML配置文件解析成 `BeanDefinition` 对象列表，
+为后续的 Bean 创建做准备。
+
+```java
+/**
+ * Desc：Bean 配置解析
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public interface BeanConfigParser {
+
+    /**
+     * 解析配置文件
+     *
+     * @param inputStream 配置文件
+     * @return 生成的 BeanDefinition 列表
+     */
+    List<BeanDefinition> parse(InputStream inputStream);
+
+    /**
+     * 解析配置文件
+     *
+     * @param configContent 配置文件
+     * @return 生成的 BeanDefinition 列表
+     */
+    List<BeanDefinition> parse(String configContent);
+}
+```
+
+```java
+/**
+ * Desc：XML 文件解析实现
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class XmlBeanConfigParser implements BeanConfigParser {
+
+    @Override
+    public List<BeanDefinition> parse(InputStream inputStream) {
+        // 模拟从输入流读取配置文件内容
+        String content = "Some XML Content";  // TODO: 实现从 inputStream 读取内容
+        return parse(content);
+    }
+
+    @Override
+    public List<BeanDefinition> parse(String configContent) {
+        // 模拟XML解析过程，这里仅为示例
+        List<BeanDefinition> beanDefinitions = new ArrayList<>();
+        // TODO: 解析 configContent，并生成 BeanDefinition 列表
+        return beanDefinitions;
+    }
+}
+```
+
+涉及到的相关类如下：
+
+```java
+/**
+ * Desc：bean 定义元数据
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+@Data
+public class BeanDefinition {
+
+    /**
+     * bean id
+     */
+    private String id;
+
+    /**
+     * bean class
+     */
+    private String className;
+
+    /**
+     * 构造参数
+     */
+    private List<ConstructorArg> constructorArgs = new ArrayList<>();
+
+    /**
+     * 作用域(默认 prototype)
+     */
+    private Scope scope = Scope.PROTOTYPE;
+
+    /**
+     * 是否延迟初始化(默认 false)
+     */
+    private boolean lazyInit = false;
+
+    /**
+     * 是否单例
+     */
+    public boolean isSingleton() {
+        return scope == Scope.SINGLETON;
+    }
+
+    /**
+     * 构造参数
+     */
+    @Data
+    public static class ConstructorArg {
+
+        /**
+         * 是否为引用
+         */
+        private boolean isRef;
+
+        /**
+         * 类型
+         */
+        private Class<?> type;
+
+        /**
+         * 值
+         */
+        private Object arg;
+    }
+
+    /**
+     * 作用域
+     */
+    public static enum Scope {
+        SINGLETON,
+        PROTOTYPE
+    }
+}
+```
+
+#### BeansFactory 的设计
+
+`BeansFactory` 的核心任务是根据 `BeanDefinition` 的描述，使用 Java 的反射机制动态地创建对象，并处理对象的依赖注入和生命周期管理。具体来说，
+它包括以下几个主要功能：
+
+1. **存储和管理BeanDefinition**：`BeansFactory` 通过 `ConcurrentHashMap` 来保存所有的 `BeanDefinition`，确保线程安全。
+2. **创建和缓存单例对象**：对于 `scope` 属性为 `singleton` 的 Bean，`BeansFactory` 在首次创建后会将其缓存到 `singletonObjects` 中，后续请求时直接从缓存中返回。
+3. **动态创建对象**：利用 Java 的反射机制，`BeansFactory` 可以根据 `BeanDefinition` 中的信息动态加载类并创建对象。
+4. **处理依赖注入**：当创建对象时，如果构造函数有参数且这些参数是其他 Bean 的引用，`BeansFactory` 会先创建这些依赖对象，再将它们注入到目标 Bean 中。
+
+```java
+/**
+ * Desc：bean 工厂
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class BeansFactory {
+
+    /**
+     * 容器初始化时候，将所有单例 bean 放入容器中
+     */
+    private ConcurrentHashMap<String, Object> singletonObjects = new ConcurrentHashMap<>();
+
+    /**
+     * bean 定义
+     */
+    private ConcurrentHashMap<String, BeanDefinition> beanDefinitions = new ConcurrentHashMap<>();
+
+    /**
+     * 获取 bean
+     * @param beanId bean id
+     * @return bean
+     */
+    public Object getBean(String beanId) {
+        BeanDefinition beanDefinition = beanDefinitions.get(beanId);
+        if (beanDefinition == null) {
+            throw new NoSuchBeanDefinitionException("Bean is not defined: " + beanId);
+        }
+        return createBean(beanDefinition);
+    }
+
+    /**
+     * 添加 bean 定义
+     * @param beanDefinitionList bean 定义列表
+     */
+    public void addBeanDefinitions(List<BeanDefinition> beanDefinitionList) {
+        // 存入 bean 定义
+        for (BeanDefinition beanDefinition : beanDefinitionList) {
+            this.beanDefinitions.putIfAbsent(beanDefinition.getId(), beanDefinition);
+
+            // 预先创建非懒加载的单例 bean
+            if (!beanDefinition.isLazyInit() && beanDefinition.isSingleton()) {
+                createBean(beanDefinition);
+            }
+        }
+    }
+
+    /**
+     * 创建 bean
+     * @param beanDefinition bean 定义
+     * @return bean
+     */
+    protected Object createBean(BeanDefinition beanDefinition) {
+        // 如果是单例且已存在，直接返回
+        if (beanDefinition.isSingleton() && singletonObjects.contains(beanDefinition.getId())) {
+            return singletonObjects.get(beanDefinition.getId());
+        }
+
+        // 反射创建 bean
+        Object bean = null;
+        try {
+            // 获取 bean 类
+            Class<?> beanClass = Class.forName(beanDefinition.getClassName());
+            // 获取构造函数参数
+            List<BeanDefinition.ConstructorArg> args = beanDefinition.getConstructorArgs();
+
+            if (args.isEmpty()) {
+                // 无参构造函数
+                bean = beanClass.newInstance();
+            } else {
+                // 带参数的构造函数
+
+                // 获取构造函数参数类型
+                Class<?>[] argClasses = new Class<?>[args.size()];
+                // 获取构造函数参数值
+                Object[] argObjects = new Object[args.size()];
+
+                for (int i = 0; i < args.size(); i++) {
+                    BeanDefinition.ConstructorArg arg = args.get(i);
+                    if (!arg.isRef()) {
+                        // 普通类型参数
+                        argClasses[i] = arg.getType();
+                        argObjects[i] = arg.getArg();
+                    } else {
+                        // 引用类型参数
+
+                        // 进行依赖注入
+                        BeanDefinition refBeanDefinition = beanDefinitions.get(arg.getArg());
+                        if (refBeanDefinition == null) {
+                            throw new NoSuchBeanDefinitionException("Bean is not defined: " + arg.getArg());
+                        }
+                        argClasses[i] = Class.forName(refBeanDefinition.getClassName());
+                        // 递归创建 bean
+                        argObjects[i] = createBean(refBeanDefinition);
+                    }
+                }
+                bean = beanClass.getConstructor(argClasses).newInstance(argObjects);
+            }
+        } catch (ClassNotFoundException | IllegalAccessException
+                 | InstantiationException | NoSuchMethodException | InvocationTargetException e) {
+            throw new BeanCreationFailureException("Failed to create bean: " + beanDefinition.getId(), e);
+        }
+
+        // 如果是单例，将其放入缓存
+        if (beanDefinition.isSingleton()) {
+            singletonObjects.putIfAbsent(beanDefinition.getId(), bean);
+            return singletonObjects.get(beanDefinition.getId());
+        }
+
+        return bean;
+    }
+}
+```
+
+```java
+/**
+ * Desc：Bean 创建失败异常
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class BeanCreationFailureException extends RuntimeException {
+
+    public BeanCreationFailureException(String message) {
+        super(message);
+    }
+
+    public BeanCreationFailureException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}
+```
+
+通过上述设计和实现，我们构建了一个功能完整的 `BeansFactory`，它能够根据配置文件动态创建对象，支持单例和原型模式的 Bean 管理，处理复杂的依赖
+注入需求，并确保线程安全。这个 `BeansFactory` 虽然是一个简化版的实现，但它已经具备了DI容器的核心功能。随着需求的增加，你可以进一步扩展这个工
+厂类，例如支持更多的生命周期管理方法（如初始化和销毁回调）、更灵活的依赖注入方式（如字段注入和 `Setter` 注入），以及更丰富的配置方式（如注解配置）。
+
+
+
+
+
+

@@ -1,0 +1,404 @@
+# 代理模式
+
+## 什么是代理模式？
+
+代理模式（Proxy Design Pattern）是一种结构型设计模式。其核心思想是通过引入代理类，在不改变原始类代码的前提下，对原始类的功能进行扩展。代理模
+式提供了一种间接访问对象的方式，使得可以在客户端和目标对象之间进行一些额外的操作。
+
+代理模式通常被用于以下几种情况：
+
+1. **远程代理**：为一个对象在不同地址空间提供局部代表。
+2. **虚拟代理**：在需要的时候才创建开销较大的对象。
+3. **保护代理**：控制对原始对象的访问权限。
+4. **智能指引**：在调用真实对象时，处理一些附加的操作。
+
+## 代理模式的代码实现
+
+假设我们有一个收集接口请求数据的功能，我们的原始类 `UserController` 负责处理用户的登录和注册操作，并且需要在这些操作中记录请求的时间。
+
+传统做法可能会直接将计时和记录的逻辑嵌入到 `UserController` 类中，如下所示：
+
+```java
+/**
+ * Desc：收集接口请求数据
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class UserController {
+
+    private MetricsCollector metricsCollector;
+
+    public UserVo login(String telephone, String password) {
+        long startTimestamp = System.currentTimeMillis();
+
+        // ... 省略login逻辑...
+
+        long endTimestamp = System.currentTimeMillis();
+        long responseTime = endTimestamp - startTimestamp;
+
+        RequestInfo requestInfo = new RequestInfo("login", responseTime, startTimestamp);
+        metricsCollector.recordRequest(requestInfo);
+
+        return new UserVo();
+    }
+
+    public UserVo register(String telephone, String password) {
+        long startTimestamp = System.currentTimeMillis();
+
+        // ... 省略register逻辑...
+
+        long endTimeStamp = System.currentTimeMillis();
+        long responseTime = endTimeStamp - startTimestamp;
+        RequestInfo requestInfo = new RequestInfo("register", responseTime, startTimestamp);
+        metricsCollector.recordRequest(requestInfo);
+
+        return new UserVo();
+    }
+}
+```
+
+```java
+public class UserVo {
+}
+
+@Data
+@AllArgsConstructor
+public class RequestInfo {
+    private String apiName;
+    private long responseTime;
+    private long startTimestamp;
+}
+
+public class MetricsCollector {
+    void recordRequest(RequestInfo requestInfo) {
+        // TODO: 省略记录请求日志的逻辑
+    }
+}
+```
+
+这种做法的问题在于：
+
+1. **代码耦合度高**：性能计数器代码侵入到业务逻辑中，导致代码的耦合度增加，后续如果需要更换计数器框架，维护成本较高。
+2. **职责不单一**：UserController类承担了过多的职责，不仅要处理业务逻辑，还要负责记录请求数据，这违反了单一职责原则。
+
+为了解决上述问题，我们可以使用代理模式。我们通过创建一个代理类 `UserControllerProxy`，将记录请求数据的职责从业务类中分离出来。
+
+```java
+public interface IUserController {
+    UserVo login(String telephone, String password);
+    UserVo register(String telephone, String password);
+}
+
+/**
+ * Desc：代理模式
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class UserControllerProxy implements IUserController {
+
+    private MetricsCollector metricsCollector;
+    private UserController userController;
+
+    public UserControllerProxy(UserController userController) {
+        this.userController = userController;
+        this.metricsCollector = new MetricsCollector();
+    }
+
+    @Override
+    public UserVo login(String telephone, String password) {
+        long startTimestamp = System.currentTimeMillis();
+
+        // 执行目标方法
+        UserVo userVo = userController.login(telephone, password);
+
+        long endTimeStamp = System.currentTimeMillis();
+        long responseTime = endTimeStamp - startTimestamp;
+        RequestInfo requestInfo = new RequestInfo("login", responseTime, startTimestamp);
+        metricsCollector.recordRequest(requestInfo);
+
+        return userVo;
+    }
+
+    @Override
+    public UserVo register(String telephone, String password) {
+        long startTimestamp = System.currentTimeMillis();
+
+        // 执行目标方法
+        UserVo userVo = userController.register(telephone, password);
+
+        long endTimeStamp = System.currentTimeMillis();
+        long responseTime = endTimeStamp - startTimestamp;
+        RequestInfo requestInfo = new RequestInfo("register", responseTime, startTimestamp);
+        metricsCollector.recordRequest(requestInfo);
+
+        return userVo;
+    }
+}
+```
+
+```java
+public class UserController implements IUserController {
+
+    private MetricsCollector metricsCollector;
+
+    @Override
+    public UserVo login(String telephone, String password) {
+        // ... 省略login逻辑...
+        return new UserVo();
+    }
+
+    @Override
+    public UserVo register(String telephone, String password) {
+        // ... 省略register逻辑...
+        return new UserVo();
+    }
+}
+```
+
+```java
+// UserControllerProxy 使用举例
+UserController userController = new UserControllerProxy();
+```
+
+通过这种方式，原始类 `UserController` 的职责变得更加单一，只负责业务逻辑的处理。所有与请求数据记录相关的操作都交给代理类 `UserControllerProxy` 来完成。
+
+那么，上面的代码有什么问题呢？
+
+不难看出，我们需要在代理类中将原始类的所有方法都重写一遍，并且将记录请求数据的逻辑也复制一遍，这显然是不够优雅的。如果需要添加的附加功能的类不止
+一个，那么我们就要为每一个类都创建一个代理类，这显然也是不够优雅的。并且，每个代理类中的代码都像模版样，重复了相同的代码。
+
+针对这个问题，我们可以通过JDK动态代理和CGLIB动态代理来解决这个问题。
+
+## 动态代理的原理解析
+
+### 什么是动态代理？
+
+动态代理（Dynamic Proxy）是一种在程序运行时动态创建代理对象的技术，代理对象可以在不修改原始类代码的情况下，添加或修改方法的行为。相比于静态代
+理，动态代理不需要为每个原始类编写单独的代理类，而是在运行时根据需要动态生成代理类。
+
+Java 语言提供了对动态代理的原生支持，主要通过 `java.lang.reflect.Proxy` 类和 `java.lang.reflect.InvocationHandler` 接口来实现。动
+态代理的核心在于，代理类并不是事先编写好的，而是在程序运行时通过反射机制生成的。
+
+### 动态代理的实现原理
+
+#### JDK 动态代理
+
+JDK 动态代理的实现可以通过以下几个步骤：
+
+1. **定义接口**：代理类和被代理类必须实现相同的接口，这样代理类可以通过接口来调用被代理类的方法。
+2. **创建 InvocationHandler**：`InvocationHandler` 接口是动态代理的核心，通过实现这个接口，可以定义代理类在方法调用前后的行为。
+3. **使用 Proxy 类创建代理对象**：通过 `Proxy.newProxyInstance` 方法创建代理对象。这个方法接收类加载器、接口数组和 `InvocationHandler` 实例作为参数。
+
+以下是动态代理的代码实现：
+
+```java
+/**
+ * Desc：动态代理
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class MetricsCollectorProxy {
+
+    private MetricsCollector metricsCollector;
+
+    public MetricsCollectorProxy() {
+        this.metricsCollector = new MetricsCollector();
+    }
+
+    /**
+     * 创建代理
+     *
+     * @param proxiedObject 被代理的对象
+     * @return 代理对象
+     */
+    public Object createProxy(Object proxiedObject) {
+        // 获取被代理对象的接口
+        Class<?>[] interfaces = proxiedObject.getClass().getInterfaces();
+        // 创建动态代理处理器
+        DynamicProxyHandler handler = new DynamicProxyHandler(proxiedObject);
+        // 创建动态代理对象(TIP: 这里的董涛代理实现类不需要我们编写，JDK会自动生成，然后调用handler的invoke方法)
+        return Proxy.newProxyInstance(proxiedObject.getClass().getClassLoader(), interfaces, handler);
+    }
+
+    /**
+     * 动态代理处理器
+     */
+    private class DynamicProxyHandler implements InvocationHandler {
+
+        /**
+         * 被代理的对象
+         */
+        private Object proxiedObject;
+
+        public DynamicProxyHandler(Object proxiedObject) {
+            this.proxiedObject = proxiedObject;
+        }
+
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            long startTimestamp = System.currentTimeMillis();
+
+            // 通过反射调用原始对象的方法
+            Object result = method.invoke(proxiedObject, args);
+
+            long endTimeStamp = System.currentTimeMillis();
+            long responseTime = endTimeStamp - startTimestamp;
+
+            String apiName = proxiedObject.getClass().getName() + ":" + method.getName();
+            RequestInfo requestInfo = new RequestInfo(apiName, responseTime, startTimestamp);
+            metricsCollector.recordRequest(requestInfo);
+
+            return result;
+        }
+    }
+}
+```
+
+```java
+// MetricsCollectorProxy 使用示例
+MetricsCollectorProxy proxy = new MetricsCollectorProxy();
+IUserController userController = (IUserController) proxy.createProxy(new UserController());
+```
+
+在这段代码中，`MetricsCollectorProxy` 是一个通用的代理类，它可以为任何实现了接口的类创建代理对象，并在方法调用前后进行性能统计。`DynamicProxyHandler` 是
+ `InvocationHandler` 的实现，它定义了在代理类中实际执行的方法逻辑。在运行时 JDK 会根据 `InvocationHandler` 的实现，动态生成代理类，并调用 `invoke` 方法。
+
+> TIP: 实现接口是必须的吗？
+> 使用 JDK 的动态代理，必须实现接口，因为动态代理需要代理对象的接口。如果代理对象没有实现接口，那么无法使用动态代理。除了 JDK 的动态代理，还有
+> CGLIB 动态代理，它不需要实现接口，但需要被代理对象是一个类，不能是接口或抽象类。CGLIB 的工作原理是通过继承被代理类，然后重写被代理类的方法，
+> 在重写的方法中调用原始方法，并记录性能信息。
+
+#### CGLIB 动态代理
+
+CGLIB（Code Generation Library）是一种强大的字节码生成库，主要用于实现动态代理。与 JDK 动态代理不同的是，CGLIB 不要求目标类必须实现接口。
+它通过生成目标类的子类，并在子类中拦截对父类方法的调用，从而实现代理功能。
+
+CGLIB 动态代理的底层原理是 ASM（一个 Java 字节码操作库），它通过 ASM 在运行时生成字节码并加载到 JVM 中，从而创建代理类。由于 CGLIB 生成的
+是目标类的子类，因此目标类的方法不能被声明为 `final`，否则代理将失效。
+
+我们可以使用 CGLIB 实现类似于前面 JDK 动态代理的功能。首先，需要引入 CGLIB 库，CGLIB 可以通过 Maven 或 Gradle 引入。然后，通过实
+现 `MethodInterceptor` 接口，并重写 `intercept` 方法编写代理逻辑。
+
+相关依赖如下：
+
+```xml
+<dependency>
+    <groupId>cglib</groupId>
+    <artifactId>cglib</artifactId>
+    <version>3.3.0</version>
+</dependency>
+```
+
+以下是一个使用 CGLIB 实现动态代理的示例代码：
+
+```java
+/**
+ * Desc：基于 CGLIB 的动态代理
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class MetricsCollectorCglibProxy implements MethodInterceptor {
+
+    private MetricsCollector metricsCollector;
+
+    public MetricsCollectorCglibProxy() {
+        this.metricsCollector = new MetricsCollector();
+    }
+
+    /**
+     * 创建代理
+     *
+     * @param targetClass 目标类
+     * @return 代理对象
+     */
+    public Object createProxy(Class<?> targetClass) {
+        // 创建代理(目标类的子类)
+        Enhancer enhancer = new Enhancer();
+        // 设置代理类的父类为目标类
+        enhancer.setSuperclass(targetClass);
+        // 设置回调方法，this 表示当前类，即当前类实现了 MethodInterceptor 接口，所以可以作为回调方法
+        enhancer.setCallback(this);
+        return enhancer.create();
+    }
+
+    /**
+     * 拦截器方法，用于在方法调用前后进行性能监控
+     *
+     * @param o 被拦截的实例
+     * @param method 被拦截的方法
+     * @param objects 被拦截方法的参数
+     * @param methodProxy 方法代理，用于调用被拦截的方法
+     * @return 被拦截方法的返回值
+     * @throws Throwable 被拦截方法可能抛出的异常
+     */
+    @Override
+    public Object intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy) throws Throwable {
+        long startTimestamp = System.currentTimeMillis();
+
+        // 调用父类的方法
+        Object result = methodProxy.invokeSuper(o, objects);
+
+        long endTimeStamp = System.currentTimeMillis();
+        long responseTime = endTimeStamp - startTimestamp;
+        String apiName = o.getClass().getSuperclass().getName() + ":" + method.getName();
+        RequestInfo requestInfo = new RequestInfo(apiName, responseTime, startTimestamp);
+        metricsCollector.recordRequest(requestInfo);
+
+        return result;
+    }
+}
+```
+
+```java
+// 使用 CGLIB 代理创建 UserController 的代理对象
+MetricsCollectorCglibProxy proxy = new MetricsCollectorCglibProxy();
+UserController userController = (UserController) proxy.createProxy(UserController.class);
+```
+
+在这个例子中，`MetricsCollectorCglibProxy` 实现了 `MethodInterceptor` 接口，CGLIB 在调用目标类方法时会拦截这些调用，并在调用前后添加
+逻辑。`createProxy` 方法用于生成代理对象，`intercept` 方法则定义了代理的逻辑。
+
+#### CGLIB 动态代理 VS JDK 动态代理
+
+| 特性 ｜ JDK 动态代理 ｜ CGLIB 动态代理 ｜
+| --- | --- | --- |
+| 实现方式 ｜ 基于反射机制，通过 `java.lang.reflect.Proxy` 类实现 ｜ 基于字节码生成，通过 ASM 生成目标类的子类实现 ｜
+| 代理对象 ｜ 只能代理实现了接口的类 ｜ 可以代理没有实现接口的类，代理类是目标类的子类 ｜
+| 性能 ｜ 相对较慢，由于使用反射进行方法调用 ｜ 性能较高，直接生成字节码，执行速度更快 ｜
+| 限制 ｜ 目标类必须实现接口 ｜ 目标类不能是 final 类，不能代理 final 方法 ｜
+| 使用场景 ｜ 适用于接口丰富、需要灵活切换代理对象的场景 ｜ 适用于没有接口的类，或需要高性能的场景 ｜
+| 代理类的创建时间 ｜ 运行时动态生成代理类，比较灵活 ｜ 运行时生成代理类，但生成字节码的过程比 JDK 动态代理稍复杂 ｜
+
+> Note:
+> * JDK 动态代理：适用于目标类实现了接口的场景。它通过反射来实现动态代理，生成的代理对象实现了与目标对象相同的接口。JDK 动态代理简单易用，但由于使用反射，性能相对较低。
+> * CGLIB 动态代理：适用于目标类没有实现接口的场景。CGLIB 通过生成目标类的子类来实现代理，因此可以代理没有实现接口的类。CGLIB 直接操作字节码，性能较高，但无法代理 final 类和 final 方法。
+
+在实际应用中，JDK 动态代理更适合用于接口驱动的开发，CGLIB 动态代理则更适用于没有接口的类，或者需要更高性能的场景。Spring 框架在 AOP 的实现中，
+会根据目标类是否实现了接口，自动选择使用 JDK 动态代理还是 CGLIB 动态代理，从而确保在不同场景下都能发挥出最佳性能。
+
+### 动态代理的应用场景
+
+动态代理在实际开发中有广泛的应用，尤其是在需要为多个类添加统一功能的时候，如日志记录、性能监控、事务管理等。以下是一些典型的应用场景：
+
+1. **AOP（面向切面编程）**：在 AOP 中，动态代理是核心技术之一，它通过在方法执行前后插入切面逻辑，实现诸如事务管理、日志记录、权限控制等功能。Spring AOP 就是基于动态代理实现的。
+2. **RPC（远程过程调用）**：RPC 框架常使用动态代理来隐藏网络通信的复杂性，使得客户端可以像调用本地方法一样调用远程服务。动态代理可以在客户端调用时自动处理远程调用的细节，如网络通信、序列化/反序列化等。
+3. **接口缓存**：在某些场景中，接口请求的结果可能是可以缓存的，通过动态代理，可以拦截方法调用，并在调用前检查缓存中是否有结果，如果有则直接返回缓存结果，避免重复的计算或数据库查询。
+
+### 代理模式与动态代理的对比
+
+静态代理与动态代理的最大区别在于静态代理需要为每一个原始类编写一个代理类，这会导致大量冗余的代码和类，而动态代理则可以通过反射机制，在运行时动态
+生成代理类，极大地减少了代码量和维护成本。
+
+在代理模式中，静态代理更适用于一些简单、固定的场景，而动态代理则更适用于复杂、需要灵活扩展的场景。通过合理使用动态代理，可以有效减少代码冗余，提
+高系统的可维护性和扩展性。
+
+
+
+
+
+
+

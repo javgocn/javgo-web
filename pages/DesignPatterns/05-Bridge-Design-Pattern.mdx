@@ -1,0 +1,305 @@
+import PostImg from 'components/PostImg'
+
+# 桥接模式
+
+桥接模式（Bridge Pattern）的代码实现相对简单，但其理解稍显复杂，应用场景也较为局限，因此在实际项目中并不如代理模式那样常见。尽管桥接模式在实践
+中的使用频率不高，但理解其核心思想依然是掌握面向对象设计原则的重要一环。
+
+## 桥接模式的原理解析
+
+### 桥接模式的定义
+
+**桥接模式**，又称 **桥梁模式**，在设计模式中是相对较难理解的一种。它的定义来源于 GoF 的经典著作《设计模式》：“将抽象和实现解耦，让它们可以独
+立变化。” 简单来说，这一模式旨在通过将类的抽象部分与实现部分分离，使两者可以独立进行扩展，从而避免继承层次的复杂化。
+
+在实际应用中，桥接模式的一个典型场景是当一个类存在多个独立变化的维度时，通过组合而非继承的方式，使得这些维度可以独立扩展。这种设计理念与 “组合优
+于继承” 的设计原则相吻合，能够有效地避免继承带来的复杂性和灵活性不足的问题。
+
+### JDBC 驱动的桥接模式应用
+
+为了更好地理解桥接模式，我们以 JDBC 驱动 为例进行说明。JDBC 是 Java 中的一套 API，用于连接和操作不同类型的数据库。
+
+以下是一个使用 JDBC 查询数据库的简单示例代码：
+
+```java
+Class.forName("com.mysql.cj.jdbc.Driver"); //加载及注册 JDBC 驱动程序
+String url = "jdbc:mysql://localhost:3306/sample_db?user=root&password=your_password";
+Connection con = DriverManager.getConnection(url);
+Statement stmt = con.createStatement();
+String query = "select * from test";
+ResultSet rs = stmt.executeQuery(query);
+while (rs.next()) {
+    rs.getString(1);
+    rs.getInt(2);
+}
+```
+
+在上述代码中，如果我们想将 MySQL 数据库切换为 Oracle 数据库，只需将第一行代码中的 `com.mysql.jdbc.Driver` 替换为 `oracle.jdbc.driver.OracleDriver`。
+这一切换过程既简单又灵活，得益于桥接模式的巧妙应用。
+
+通过查看 `com.mysql.cj.jdbc.Driver` 的源码，可以发现 `Class.forName("com.mysql.jdbc.Driver")` 不仅加载了指定的 `Driver` 类，还将该
+ `Driver` 注册到 `DriverManager` 中。这样，后续对 JDBC 接口的调用都会委派给注册的具体 `Driver` 实现类，从而实现了数据库类型的灵活切换。
+
+对应源码如下：
+
+```java
+public class Driver extends NonRegisteringDriver implements java.sql.Driver {
+    public Driver() throws SQLException {
+    }
+
+    static {
+        try {
+            // 注册驱动程序
+            DriverManager.registerDriver(new Driver());
+        } catch (SQLException var1) {
+            throw new RuntimeException("Can't register driver!");
+        }
+    }
+}
+```
+
+结合上述源码，我们知道，当执行 `Class.forName("com.mysql.cj.jdbc.Driver");` 的时候，其实干了两件事：
+
+1. JVM 查找 `com.mysql.cj.jdbc.Driver` 类，并加载该类；
+2. 将 `com.mysql.cj.jdbc.Driver` 类注册到 `DriverManager` 中。
+
+那么，`DriverManager` 又起到一个什么作用呢？我们再来看看它的源码：
+
+```java
+public class DriverManager {
+  // 存储所有注册的 Driver
+  private final static CopyOnWriteArrayList<DriverInfo> registeredDrivers = new CopyOnWriteArrayList<DriverInfo>();
+
+  //...
+
+  static {
+    // 初始化驱动程序
+    loadInitialDrivers();
+    println("JDBC DriverManager initialized");
+  }
+
+  //...
+
+  // 注册驱动程序
+  public static synchronized void registerDriver(java.sql.Driver driver) throws SQLException {
+    if (driver != null) {
+      registeredDrivers.addIfAbsent(new DriverInfo(driver));
+    } else {
+      throw new NullPointerException();
+    }
+  }
+
+  // 获取连接
+  public static Connection getConnection(String url, String user, String password) throws SQLException {
+    java.util.Properties info = new java.util.Properties();
+    if (user != null) {
+      info.put("user", user);
+    }
+    if (password != null) {
+      info.put("password", password);
+    }
+    return (getConnection(url, info, Reflection.getCallerClass()));
+  }
+  //...
+}
+```
+
+可以看出，`DriverManager` 会将 `com.mysql.cj.jdbc.Driver` 实例化，并调用 `DriverManager.registerDriver()` 方法将 `com.mysql.cj.jdbc.Driver` 注册到 `DriverManager` 中。
+后续所有对 JDBC 接口的调用都会委派给 `com.mysql.cj.jdbc.Driver` 实现类。
+
+桥接模式的定义中提到的 “抽象” 和 “实现”，在 JDBC 的例子中分别对应于 JDBC 接口和具体的数据库驱动。JDBC 作为抽象层，与具体数据库无关，而 Driver 作
+为实现层，与具体数据库相关。通过这种设计，JDBC 和具体的 Driver 可以独立开发，通过组合关系灵活组合在一起。
+
+以下是 JDBC 桥接模式结构的示意图：
+
+<PostImg src="https://javgo-images.oss-cn-beijing.aliyuncs.com/2024-08-10-154633.jpg" />
+
+## 桥接模式的应用举例：多渠道消息推送系统
+
+在我们的API接口监控系统中，不同的告警规则会触发不同类型的告警，支持多种通知渠道（如邮件、短信、微信、自动语音电话），且通知的紧急程度也有不同的
+等级（如严重、紧急、普通、无关紧要）。为了实现这种多变的通知需求，我们可以利用桥接模式对代码进行设计和优化。
+
+### 直接实现方式
+
+最直接的实现方式是将所有发送逻辑都写在一个 `Notification` 类中，如下所示：
+
+```java
+/**
+ * Desc：告警通知
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class Notification {
+
+    /**
+     * 告警通知方式 - 邮件
+     */
+    private List<String> emailAddresses;
+
+    /**
+     * 告警通知方式 - 电话
+     */
+    private List<String> telephones;
+
+    /**
+     * 告警通知方式 - 微信
+     */
+    private List<String> wechatIds;
+
+    public Notification() {}
+
+    public void setEmailAddress(List<String> emailAddress) {
+        this.emailAddresses = emailAddress;
+    }
+
+    public void setTelephones(List<String> telephones) {
+        this.telephones = telephones;
+    }
+
+    public void setWechatIds(List<String> wechatIds) {
+        this.wechatIds = wechatIds;
+    }
+
+    /**
+     * 发送告警
+     *
+     * @param level 告警等级
+     * @param message 告警信息
+     */
+    public void notify(NotificationEmergencyLevel level, String message) {
+        if (level.equals(NotificationEmergencyLevel.SEVERE)) {
+            // 自动语音电话
+        } else if (level.equals(NotificationEmergencyLevel.URGENCY)) {
+            // 发微信
+        } else if (level.equals(NotificationEmergencyLevel.NORMAL)) {
+            // 发邮件
+        } else if (level.equals(NotificationEmergencyLevel.TRIVIAL)) {
+            // 发邮件
+        }
+    }
+}
+```
+
+这种实现方式的问题在于 `Notification` 类中存在大量的 `if-else` 分支逻辑，导致类的维护和扩展变得困难。为了更好地解耦消息发送逻辑，我们可以使用桥接模式对其进行重构。
+
+### 桥接模式下的重构实现
+
+通过桥接模式，我们将不同渠道的发送逻辑抽象成独立的消息发送类（MsgSender相关类），并将 `Notification` 类作为抽象层，通过组合关系实现消息发送功能。
+
+重构后的代码如下：
+
+```java
+/**
+ * Desc：消息发送顶层接口
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public interface MsgSender {
+
+    void send(String message);
+}
+```
+
+```java
+/**
+ * Desc：电话告警
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class TelephoneMsgSender implements MsgSender {
+
+    private List<String> telephones;
+
+    public TelephoneMsgSender(List<String> telephones) {
+        this.telephones = telephones;
+    }
+
+    @Override
+    public void send(String message) {
+        // 实现自动语音电话发送逻辑
+    }
+}
+
+public class EmailMsgSender implements MsgSender {
+    // 与TelephoneMsgSender代码结构类似
+}
+
+public class WechatMsgSender implements MsgSender {
+    // 与TelephoneMsgSender代码结构类似
+}
+```
+
+```java
+/**
+ * Desc：通知
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public abstract class NotificationNew {
+
+    /**
+     * 消息发送（有不同的实现）
+     */
+    protected MsgSender msgSender;
+
+    public NotificationNew(MsgSender msgSender) {
+        this.msgSender = msgSender;
+    }
+
+    /**
+     * 发送消息（抽象）
+     * @param message 消息
+     */
+    public abstract void notify(String message);
+}
+```
+
+```java
+/**
+ * Desc：服务器告警
+ *
+ * @author javgo
+ * @date 2024-08-10
+ */
+public class SevereNotification extends NotificationNew {
+
+    public SevereNotification(MsgSender msgSender) {
+        super(msgSender);
+    }
+
+    /**
+     * 重写notify方法，用于发送消息 - 实现
+     *
+     * @param message 要发送的消息内容
+     */
+    @Override
+    public void notify(String message) {
+        msgSender.send(message);
+    }
+}
+
+public class UrgencyNotification extends Notification {
+    // 与SevereNotification代码结构类似
+}
+public class NormalNotification extends Notification {
+    // 与SevereNotification代码结构类似
+}
+public class TrivialNotification extends Notification {
+    // 与SevereNotification代码结构类似
+}
+```
+
+通过这种设计，`MsgSender` 和 `Notification` 两个维度可以独立变化，新增通知渠道或新的紧急程度类型时，只需新增相应的类，无需修改现有代码，极
+大提升了系统的扩展性和可维护性。
+
+> Note:
+> 桥接模式通过将抽象和实现解耦，使得它们可以独立变化，适用于类存在多个独立变化维度的场景。在多渠道消息推送系统中，桥接模式有效地解决了复杂的
+> `if-else` 逻辑，将发送逻辑拆分为多个独立的类，通过组合关系灵活地实现各种消息推送需求。尽管桥接模式的理解和应用稍有难度，但其在特定场景下
+> 的强大功能值得我们深入学习和掌握。
+
+
+

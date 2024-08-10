@@ -1,0 +1,276 @@
+import PostImg from 'components/PostImg'
+
+# 装饰器模式
+
+装饰器模式（Decorator Pattern）的代码结构与桥接模式相似，但其解决的问题和应用场景却截然不同。
+
+## Java IO类的“奇怪”用法
+
+Java 的 IO 类库庞大而复杂，负责处理数据的读取和写入。我们可以根据以下两个维度，将其划分为四类：
+
+|  | 字节流 | 字符流 |
+| --- | --- | --- |
+| 输入流 | InputStream | Reader |
+| 输出流 | OutputStream | Writer |
+
+在这些基础类之上，针对不同的读取和写入场景, Java IO 扩展出了许多子类，来应对不同的 I/O 操作需求。
+
+<PostImg src="https://javgo-images.oss-cn-beijing.aliyuncs.com/2024-08-10-163001.jpg" />
+
+然而，初学者在使用 Java IO 类时，常常会对其复杂的用法感到困惑。以下是一段读取文件 test.txt 的示例代码：
+
+```java
+InputStream in = new FileInputStream("/user/javgo/test.txt");
+InputStream bin = new BufferedInputStream(in);
+
+byte[] data = new byte[128];
+while (bin.read(data) != -1) {
+    // do something
+}
+```
+
+在这段代码中，我们首先创建一个 `FileInputStream` 对象，然后将其传递给 `BufferedInputStream` 对象以增加缓存功能。这种用法看似繁琐，不禁让
+人疑问，为什么不直接设计一个支持缓存的 `BufferedFileInputStream` 类呢？这样我们就可以简化代码，直接使用 `BufferedFileInputStream` 来读
+取文件，如下所示：
+
+```java
+InputStream bin = new BufferedFileInputStream("/user/javgo/test.txt");
+byte[] data = new byte[128];
+while (bin.read(data) != -1) {
+  //...
+}
+```
+
+## 基于继承的设计方案
+
+如果 `InputStream` 只有一个子类 `FileInputStream`，我们可以接受在其基础上派生出一个 `BufferedFileInputStream` 类。然而，`InputStream`
+的子类众多，如果我们需要为每个子类都提供缓存功能，按照继承的方式，会导致类的数量急剧增加，产生组合爆炸。更复杂的情况是，如果我们还需要支持其他功
+能增强（例如通过 `DataInputStream` 按基本数据类型读取数据），继承结构将变得更加复杂和难以维护。
+
+例如，按照继承的方式，我们可能需要设计出 `DataFileInputStream`、`BufferedDataFileInputStream` 等一系列类，继承层次随功能增加而急剧扩展。
+这种设计显然违背了 “组合优于继承” 的原则。
+
+## 基于装饰器模式的设计方案
+
+为了避免继承层次的复杂化，我们可以通过装饰器模式来解决这个问题。**装饰器模式的核心思想是通过组合而非继承的方式，动态地为对象添加功能**。
+
+以下是对 Java IO 设计思路的简化展示：
+
+```java
+/**
+ * Desc：输入流接口
+ *
+ * @author javgo
+ * @date 2024-08-11
+ */
+public abstract class MyInputStream {
+
+    // 默认实现
+    public int read(byte b[]) throws IOException {
+        return read(b, 0, b.length);
+    }
+
+    public int read(byte b[], int off, int len) throws IOException {
+        // 实现略
+        return 0;
+    }
+
+    public long skip(long n) throws IOException {
+        // 实现略
+        return 0;
+    }
+
+    public int available() throws IOException {
+        return 0;
+    }
+
+    public void close() throws IOException {}
+
+    public synchronized void mark(int readlimit) {}
+
+    public synchronized void reset() throws IOException {
+        throw new IOException("mark/reset not supported");
+    }
+
+    public boolean markSupported() {
+        return false;
+    }
+}
+```
+
+```java
+/**
+ * Desc：缓存实现
+ *
+ * @author javgo
+ * @date 2024-08-11
+ */
+public class MyBufferedInputStream extends MyInputStream {
+
+    /**
+     * 缓存输入流（使用 volatile 关键字修饰，保证可见性）
+     */
+    protected volatile MyInputStream in;
+
+    protected MyBufferedInputStream(MyInputStream in) {
+        this.in = in;
+    }
+
+    // 实现基于缓存的读数据接口
+}
+```
+
+```java
+/**
+ * Desc：数据类型实现
+ *
+ * @author javgo
+ * @date 2024-08-11
+ */
+public class MyDataInputStream extends MyInputStream {
+
+    /**
+     * 使用 volatile 关键字修饰，保证可见性
+     */
+    protected volatile MyInputStream in;
+
+    protected MyDataInputStream(MyInputStream in) {
+        this.in = in;
+    }
+
+    // 实现读取基本类型数据的接口
+}
+```
+
+在上述设计中，`BufferedInputStream` 和 `DataInputStream` 通过组合关系，将传入的 `InputStream` 对象作为其内部成员，从而可以在不修改原
+有类的基础上，为其增加缓存和按基本数据类型读取的功能。这种设计避免了继承关系的复杂化。
+
+## 装饰器模式的特殊之处
+
+装饰器模式不仅仅是简单的 “用组合替代继承”，它还具有以下两个特殊之处：
+
+1. **装饰器类与原始类继承同一个父类**：这样可以对原始类 “嵌套” 多个装饰器类。例如，下面的代码同时为 `FileInputStream` 添加了缓存和按基本数据类型读取的功能。
+
+```java
+InputStream in = new FileInputStream("/user/javgo/test.txt");
+InputStream bin = new BufferedInputStream(in); // 装饰 InputStream 提供缓存功能
+DataInputStream din = new DataInputStream(bin); // 装饰 InputStream 提供按基本数据类型读取的功能
+int data = din.readInt();
+```
+
+2. **装饰器类用于增强功能**：装饰器模式的一个重要特点是装饰器类用于增强原始类的功能，而不是像代理模式那样添加无关的功能。例如，代理模式中的代理类可能添加的是与原始类逻辑无关的功能，如日志记录或事务管理，而装饰器类则会直接增强原始类的核心功能。
+
+```java
+// 代理模式的代码结构
+public interface IA {
+  void f();
+}
+
+public class A implements IA {
+  public void f() { //... }
+}
+
+public class AProxy implements IA {
+  private IA a;
+  public AProxy(IA a) {
+    this.a = a;
+  }
+
+  public void f() {
+    // 代理逻辑
+    a.f();
+    // 代理逻辑
+  }
+}
+```
+
+```java
+// 装饰器模式的代码结构
+public interface IA {
+  void f();
+}
+
+public class A implements IA {
+  public void f() { //... }
+}
+
+public class ADecorator implements IA {
+  private IA a;
+
+  public ADecorator(IA a) {
+    this.a = a;
+  }
+
+  public void f() {
+    // 功能增强代码
+    a.f();
+    // 功能增强代码
+  }
+}
+```
+
+## FilterInputStream 的引入
+
+在 Java IO 中，`BufferedInputStream` 和 `DataInputStream` 实际上并非直接继承自 `InputStream`，而是继承自 `FilterInputStream`。
+为什么会引入 `FilterInputStream` 呢？这涉及到 Java IO 设计的一个重要考虑。
+
+<PostImg src="https://javgo-images.oss-cn-beijing.aliyuncs.com/2024-08-10-162415.jpg" />
+
+<PostImg src="https://javgo-images.oss-cn-beijing.aliyuncs.com/2024-08-10-162452.jpg" />
+
+`InputStream` 是一个抽象类，提供了多种默认实现。如果我们直接继承 `InputStream` 并创建装饰器类，可能会导致重复实现大量的方法。为了解决这个问题，
+Java IO 引入了 `FilterInputStream` 类，作为所有装饰器类的父类。这样，装饰器类只需关注需要增强的功能，其余功能可以继承自 `FilterInputStream`，
+避免了代码的重复。以下是 `FilterInputStream` 的实现：
+
+```java
+public class FilterInputStream extends InputStream {
+  protected volatile InputStream in;
+
+  protected FilterInputStream(InputStream in) {
+    this.in = in;
+  }
+
+  public int read() throws IOException {
+    return in.read();
+  }
+
+  public int read(byte b[]) throws IOException {
+    return read(b, 0, b.length);
+  }
+
+  public int read(byte b[], int off, int len) throws IOException {
+    return in.read(b, off, len);
+  }
+
+  public long skip(long n) throws IOException {
+    return in.skip(n);
+  }
+
+  public int available() throws IOException {
+    return in.available();
+  }
+
+  public void close() throws IOException {
+    in.close();
+  }
+
+  public synchronized void mark(int readlimit) {
+    in.mark(readlimit);
+  }
+
+  public synchronized void reset() throws IOException {
+    in.reset();
+  }
+
+  public boolean markSupported() {
+    return in.markSupported();
+  }
+}
+```
+
+通过引入 `FilterInputStream`，Java IO 避免了在每个装饰器类中重复实现 `InputStream` 的默认方法，简化了代码结构，使装饰器模式在 Java IO 中的实现更加优雅和灵活。
+
+> Note:
+> 装饰器模式通过组合关系来动态地为对象添加功能，而不是通过继承来扩展类的功能。通过剖析 Java IO 类库的设计，我们可以看到装饰器模式在实际应用中
+> 的优势：它能够有效地避免继承关系的复杂化，提升代码的可维护性和扩展性。装饰器模式不仅仅是 “用组合替代继承”，还可以灵活地为对象添加增强功能，
+> 是面向对象设计中非常重要的一种模式。

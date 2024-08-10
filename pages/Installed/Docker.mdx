@@ -157,3 +157,24 @@ docker run -d \
  -v /develop/mysql/logs:/var/log/mysql \
  mysql:8.0
 ```
+
+## 常见问题
+
+阿里云提供了镜像源：[https://cr.console.aliyun.com/cn-hangzhou/instances/mirrors](https://cr.console.aliyun.com/cn-hangzhou/instances/mirrors)
+
+登录后你会获得一个专属的地址:
+
+<PostImg src="https://javgo-images.oss-cn-beijing.aliyuncs.com/2024-08-10-040944.jpg" />
+
+您可以通过修改 daemon 配置文件 `/etc/docker/daemon.json` 来使用加速器: 
+
+```bash
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json <<-'EOF'
+{
+  "registry-mirrors": ["你的专属地址"]
+}
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+```
