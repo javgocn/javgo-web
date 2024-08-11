@@ -1,0 +1,13 @@
+{
+  "01-Observer-Design-Pattern": "观察者模式",
+  "02-Template-Method-Design-Pattern": "模板模式",
+  "03-Strategy-Design-Pattern": "策略模式",
+  "04-Chain-Of-Responsibility-Design-Pattern": "职责链模式",
+  "05-State-Design-Pattern": "状态模式",
+  "06-Iterator-Design-Pattern": "迭代器模式",
+  "07-Visitor-Design-Pattern": "访问者模式",
+  "08-Memento-Design-Pattern": "备忘录模式",
+  "09-Command-Design-Pattern": "命令模式",
+  "10-Interpreter-Design-Pattern": "解释器模式",
+  "11-Mediator-Design-Pattern": "中介模式"
+}

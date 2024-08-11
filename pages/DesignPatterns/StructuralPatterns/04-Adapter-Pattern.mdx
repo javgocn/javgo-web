@@ -1,0 +1,514 @@
+# 适配器模式
+
+适配器模式（Adapter Pattern）虽然概念简单，但应用广泛，理解它可以帮助我们在实际开发中解决接口不兼容的问题。
+
+本节内容将覆盖适配器模式的两种实现方式：类适配器和对象适配器，并介绍五种常见的应用场景。我们还会通过分析SLF4J日志框架，展示适配器模式在真实项目中的应用。
+
+## 适配器模式的原理与实现
+
+适配器模式（Adapter Design Pattern）的主要目的是解决接口不兼容问题。它通过将一个类的接口转换为另一个接口，使得本来由于接口不兼容而无法协同工作的类能够一起工作。
+
+常用的例子是 USB 转接头。通过转接头，我们可以将不兼容的接口连接起来，完成数据传输或电源供应。
+
+### 实现方式
+
+适配器模式的实现主要有两种方式：类适配器 和 对象适配器。这两种实现方式的区别在于前者使用继承来实现接口转换，而后者则是通过组合来实现。
+
+#### 类适配器：基于继承
+
+```java
+/**
+ * Desc：目标接口
+ *
+ * @author javgo
+ * @date 2024-08-11
+ */
+public interface ITarget {
+    void f1();
+    void f2();
+    void fc();
+}
+```
+
+```java
+/**
+ * Desc：已存在的类，接口与目标接口不兼容
+ *
+ * @author javgo
+ * @date 2024-08-11
+ */
+public class Adaptee {
+    public void fa() { /*...*/ }
+    public void fb() { /*...*/ }
+    public void fc() { /*...*/ }
+}
+```
+
+```java
+/**
+ * Desc：类适配器，通过继承实现
+ *
+ * @author javgo
+ * @date 2024-08-11
+ */
+public class Adaptor extends Adaptee implements ITarget {
+
+    @Override
+    public void f1() {
+        super.fa(); // 调用 Adaptee 的方法
+    }
+
+    @Override
+    public void f2() {
+        // 重新实现f2()
+    }
+
+    // fc() 方法继承自 Adaptee
+}
+```
+
+类适配器通过继承 `Adaptee` 类并实现 `ITarget` 接口，将不兼容的 `Adaptee` 接口转换为目标接口 `ITarget`。这种方式的优点是适配器类可以直接
+访问父类的实现，代码相对简洁，但灵活性较低，适用于 `Adaptee` 接口较少且与 `ITarget` 接口高度契合的情况。
+
+#### 对象适配器：基于组合
+
+```java
+/**
+ * Desc：目标接口
+ *
+ * @author javgo
+ * @date 2024-08-11
+ */
+public interface ITarget {
+    void f1();
+    void f2();
+    void fc();
+}
+```
+
+```java
+/**
+ * Desc：已存在的类，接口与目标接口不兼容
+ *
+ * @author javgo
+ * @date 2024-08-11
+ */
+public class Adaptee {
+    public void fa() { /*...*/ }
+    public void fb() { /*...*/ }
+    public void fc() { /*...*/ }
+}
+```
+
+```java
+/**
+ * Desc：对象适配器，通过组合实现
+ *
+ * @author javgo
+ * @date 2024-08-11
+ */
+public class Adaptor implements ITarget {
+
+    private final Adaptee adaptee;
+
+    public Adaptor(Adaptee adaptee) {
+        this.adaptee = adaptee;
+    }
+
+    @Override
+    public void f1() {
+        adaptee.fa(); // 委托给 Adaptee 的方法
+    }
+
+    @Override
+    public void f2() {
+        // 重新实现f2()
+    }
+
+    @Override
+    public void fc() {
+        adaptee.fc(); // 委托给 Adaptee 的方法
+    }
+}
+```
+
+对象适配器通过组合的方式将 `Adaptee` 的实例注入到适配器中，然后通过适配器的方法调用 `Adaptee` 的方法。相比类适配器，对象适配器更为灵活，因为
+它不受继承的限制，可以适配不同的 `Adaptee` 实例。
+
+### 实际开发中的选择
+
+在实际开发中，选择哪种适配器实现方式主要取决于以下两个因素：
+
+1. **Adaptee接口的数量**：如果 `Adaptee` 接口较少，两种方式均可使用。但如果接口较多且与 `ITarget` 接口高度重合，类适配器实现更简洁。
+2. **Adaptee与ITarget接口的契合程度**：如果大部分接口定义相同，类适配器通过继承可减少代码量；而如果接口差异较大，对象适配器的组合方式更为灵活，不受继承的限制。
+
+## 适配器模式应用场景总结
+
+适配器模式的原理和实现并不复杂，但它的应用场景却非常广泛。适配器模式通常被视为一种 “补救模式”，用来修复设计上的缺陷或解决接口不兼容的问题。如果在
+设计初期我们就能合理规划和协调接口设计，很多情况下适配器模式就显得多余。然而，在实际开发中，我们难免会遇到一些接口不兼容的问题，这时适配器模式便能
+发挥其重要作用。
+
+### 封装有缺陷的接口设计
+
+当我们依赖的外部系统在接口设计上存在缺陷，比如设计了大量静态方法、命名混乱或参数过多，导致我们自身的代码难以维护和测试时，适配器模式可以帮助我们
+对这些接口进行二次封装。通过封装，我们可以抽象出一个更优雅、更易于使用和测试的接口，从而隔离设计上的缺陷。
+
+```java
+/**
+ * Desc：来自外部SDK，我们无法修改其代码
+ *
+ * @author javgo
+ * @date 2024-08-11
+ */
+public class CD {
+    public static void staticFunction1() { /*...*/ }
+    public void uglyNamingFunction2() { /*...*/ }
+    public void tooManyParamsFunction3(int paramA, int paramB, int... otherArgs) { /*...*/ }
+    public void lowPerformanceFunction4() { /*...*/ }
+}
+```
+
+```java
+/**
+ * Desc：目标接口
+ *
+ * @author javgo
+ * @date 2024-08-11
+ */
+public interface ITarget {
+    void function1();
+    void function2();
+    void function3(ParamsWrapperDefinition paramsWrapper);
+    void function4();
+}
+```
+
+```java
+/**
+ * Desc：基于继承的适配器 - 封装有缺陷的接口
+ *
+ * @author javgo
+ * @date 2024-08-11
+ */
+public class CDAdaptor extends CD implements ITarget {
+    @Override
+    public void function1() {
+        super.staticFunction1();
+    }
+
+    @Override
+    public void function2() {
+        super.uglyNamingFunction2();
+    }
+
+    @Override
+    public void function3(ParamsWrapperDefinition paramsWrapper) {
+        super.tooManyParamsFunction3(paramsWrapper.getParamA(), paramsWrapper.getParamB());
+    }
+
+    @Override
+    public void function4() {
+        // 重写该方法，以提高性能
+    }
+}
+```
+
+### 统一多个类的接口设计
+
+当我们的系统需要整合多个外部系统或类，并且这些外部系统提供的接口各不相同时，可以通过适配器模式将它们的接口适配为统一的接口定义。这种做法可以利用
+多态性，极大地提高代码的复用性和扩展性。
+
+```java
+/**
+ * Desc：外部系统A 敏感词过滤
+ *
+ * @author javgo
+ * @date 2024-08-11
+ */
+public class ASensitiveWordsFilter {
+    public String filterSexyWords(String text) { return null; }
+    public String filterPoliticalWords(String text) { return null; }
+}
+```
+
+```java
+/**
+ * Desc：外部系统B 敏感词过滤
+ *
+ * @author javgo
+ * @date 2024-08-11
+ */
+public class BSensitiveWordsFilter {
+    public String filter(String text) { return null; }
+}
+```
+
+```java
+/**
+ * Desc：外部系统C 敏感词过滤
+ *
+ * @author javgo
+ * @date 2024-08-11
+ */
+public class CSensitiveWordsFilter {
+    public String filter(String text, String mask) { return null; }
+}
+```
+
+```java
+/**
+ * Desc: 统一封装敏感词过滤接口
+ *
+ * @author javgo
+ * @date 2024-08-11
+ */
+public interface ISensitiveWordsFilter {
+    String filter(String text);
+}
+```
+
+```java
+/**
+ * Desc： A系统适配器（基于对象的方式）
+ *
+ * @author javgo
+ * @date 2024-08-11
+ */
+public class ASensitiveWordsFilterAdaptor implements ISensitiveWordsFilter {
+
+    private ASensitiveWordsFilter aFilter;
+
+    @Override
+    public String filter(String text) {
+        // 调用A系统的过滤方法
+        String maskedText = aFilter.filterSexyWords(text);
+        maskedText = aFilter.filterPoliticalWords(maskedText);
+        return maskedText;
+    }
+}
+```
+
+```java
+/**
+ * Desc : 风险管理
+ *
+ * @author javgo
+ * @date 2024-08-11
+ */
+public class RiskManagement {
+
+    // 维护各种适配后的外部接口
+    private List<ISensitiveWordsFilter> filters = new ArrayList<>();
+
+    public void addSensitiveWordsFilter(ISensitiveWordsFilter filter) {
+        filters.add(filter);
+    }
+
+    // 集中调用（多态）
+    public String filterSensitiveWords(String text) {
+        String maskedText = text;
+        for (ISensitiveWordsFilter filter : filters) {
+            maskedText = filter.filter(maskedText);
+        }
+        return maskedText;
+    }
+}
+```
+
+### 替换依赖的外部系统
+
+在项目开发过程中，可能会面临替换外部系统或库的情况。适配器模式可以帮助我们在不修改现有代码的情况下，将一个系统替换为另一个系统。通过适配器，将新
+系统的接口适配为旧系统的接口，减少代码的改动，降低风险。
+
+```java
+public interface IA {
+  void fa();
+}
+
+public class A implements IA {
+  public void fa() { /*...*/ }
+}
+
+public class Demo {
+  private IA a;
+
+  public Demo(IA a) {
+    this.a = a;
+  }
+}
+```
+
+```java
+public interface IB {
+  void fb();
+}
+
+public class B implements IB {
+  public void fb() { /*...*/ }
+}
+
+// B 适配器
+public class BAdaptor implements IA {
+
+  private B b;
+
+  public BAdaptor(B b) {
+    this.b = b;
+  }
+
+  public void fa() {
+    b.fb(); // 调用 B 的 fb() 方法
+  }
+}
+```
+
+### 兼容老版本接口
+
+在版本升级过程中，某些接口可能被标记为废弃（deprecated），但为了兼容老版本，我们需要暂时保留这些接口，并将它们的实现委托给新的接口。适配器模式
+可以帮助我们在不破坏现有代码的情况下，平滑过渡到新接口。
+
+```java
+public class Collections {
+
+    // Enumeration 已经不再使用，改用 Iterator
+    public static Enumeration enumeration(final Collection c) {
+        return new Enumeration() {
+            Iterator i = c.iterator();
+
+            public boolean hasMoreElements() {
+                return i.hasNext();
+            }
+
+            public Object nextElement() {
+                return i.next();
+            }
+        };
+    }
+}
+```
+
+### 适配不同格式的数据
+
+适配器模式不仅可以用于接口的适配，还可以用于不同数据格式之间的转换。比如，将从不同系统获取的不同格式的数据转换为统一的格式，方便后续处理。类似地，
+Java 中的 `Arrays.asList()` 方法也可以看作是将数组类型的数据适配为集合类型的一种形式。
+
+```java
+List<String> stooges = Arrays.asList("Larry", "Moe", "Curly");
+```
+
+## 适配器模式在 Java 日志框架中的应用
+
+在 Java 开发中，日志是不可或缺的一部分。我们常常会使用各种日志框架，如 Log4j、Logback、JUL（java.util.logging）和 JCL（Jakarta Commons Logging）
+等来记录应用程序的运行状态。然而，这些日志框架并没有统一的接口规范，这可能会给项目的集成带来不便。为了统一日志接口，Slf4j（Simple Logging Facade for Java）
+应运而生。Slf4j 并不提供日志功能的具体实现，而是为各种日志框架提供了统一的接口，解决了项目中多种日志框架并存的问题。
+
+Slf4j 的核心思想是通过适配器模式，将不同日志框架的接口适配成 Slf4j 的统一接口。这样一来，无论底层使用哪种日志框架，业务代码都可以通过 Slf4j
+的接口进行日志记录。这一模式的应用使得日志框架的替换更加灵活，项目的可维护性大大增强。
+
+### Slf4j 的接口定义
+
+Slf4j 为日志记录定义了统一的接口，如下所示：
+
+```java
+// slf4j统一的接口定义
+package org.slf4j;
+
+public interface Logger {
+    boolean isTraceEnabled();
+    void trace(String msg);
+    void trace(String format, Object arg);
+    void trace(String format, Object arg1, Object arg2);
+    void trace(String format, Object[] argArray);
+    void trace(String msg, Throwable t);
+
+    boolean isDebugEnabled();
+    void debug(String msg);
+    void debug(String format, Object arg);
+    void debug(String format, Object arg1, Object arg2);
+    void debug(String format, Object[] argArray);
+    void debug(String msg, Throwable t);
+
+    // 省略info、warn、error等方法的定义
+}
+```
+
+这个接口定义了常用的日志记录方法，例如 trace、debug、info、warn、error 等。这些方法通过不同的参数组合，使得记录日志信息的方式更加灵活。
+
+### Log4j 日志框架的适配器实现
+
+Slf4j 为各个日志框架提供了对应的适配器。例如，对于 Log4j，Slf4j 提供了 `Log4jLoggerAdapter`，它实现了 Slf4j 的 `Logger` 接口，并将 Log4j
+的日志记录方法适配到 Slf4j 的接口中。
+
+```java
+// log4j日志框架的适配器
+package org.slf4j.impl;
+
+public final class Log4jLoggerAdapter extends MarkerIgnoringBase
+  implements LocationAwareLogger, Serializable {
+
+    // 持有Log4j的Logger实例
+    final transient org.apache.log4j.Logger logger;
+
+    // 构造方法，传入Log4j的Logger实例
+    public Log4jLoggerAdapter(org.apache.log4j.Logger logger) {
+        this.logger = logger;
+    }
+
+    // 判断是否启用了Debug级别的日志
+    public boolean isDebugEnabled() {
+        return logger.isDebugEnabled();
+    }
+
+    // 记录Debug级别的日志信息
+    public void debug(String msg) {
+        logger.log(FQCN, Level.DEBUG, msg, null);
+    }
+
+    // 记录带有一个参数的Debug级别日志
+    public void debug(String format, Object arg) {
+        if (logger.isDebugEnabled()) {
+            FormattingTuple ft = MessageFormatter.format(format, arg);
+            logger.log(FQCN, Level.DEBUG, ft.getMessage(), ft.getThrowable());
+        }
+    }
+
+    // 记录带有两个参数的Debug级别日志
+    public void debug(String format, Object arg1, Object arg2) {
+        if (logger.isDebugEnabled()) {
+            FormattingTuple ft = MessageFormatter.format(format, arg1, arg2);
+            logger.log(FQCN, Level.DEBUG, ft.getMessage(), ft.getThrowable());
+        }
+    }
+
+    // 记录带有数组参数的Debug级别日志
+    public void debug(String format, Object[] argArray) {
+        if (logger.isDebugEnabled()) {
+            FormattingTuple ft = MessageFormatter.arrayFormat(format, argArray);
+            logger.log(FQCN, Level.DEBUG, ft.getMessage(), ft.getThrowable());
+        }
+    }
+
+    // 记录带有异常信息的Debug级别日志
+    public void debug(String msg, Throwable t) {
+        logger.log(FQCN, Level.DEBUG, msg, t);
+    }
+
+    // 省略其他日志级别的方法实现...
+}
+```
+
+`Log4jLoggerAdapter` 类通过持有 Log4j 的 `Logger` 实例，将 Slf4j 的日志记录请求委托给 `Log4j` 执行。这种适配方式使得业务代码只需要依赖
+ Slf4j 的接口，而无需直接依赖具体的日志框架。
+
+### Slf4j 的反向适配
+
+有时，项目中的某些老代码可能直接使用了 JCL（Jakarta Commons Logging）进行日志记录，而我们希望将其统一到 Slf4j 接口中。Slf4j 不仅提供了从
+其他日志框架到 Slf4j 的适配器，还提供了反向适配器。这些反向适配器可以将 Slf4j 的接口适配为 JCL 或其他日志框架的接口，使得原有代码可以平滑过
+渡到新的日志框架。
+
+## 代理、桥接、装饰器、适配器四种设计模式的区别
+
+* **代理模式（Proxy Pattern）**：在不改变原始类接口的前提下，通过代理类控制对原始类的访问。代理模式主要用于控制访问，而非增强功能。
+* **桥接模式（Bridge Pattern）**：通过将抽象部分与实现部分分离，桥接模式使得二者可以独立变化，从而增加系统的灵活性。
+* **装饰器模式（Decorator Pattern）**：在不改变原始类接口的前提下，动态地为对象添加功能。装饰器模式支持多个装饰器的嵌套使用。
+* **适配器模式（Adapter Pattern）**：用于将一个类的接口转换为客户端期望的另一个接口。适配器模式通常用于事后补救，以解决接口不兼容的问题。

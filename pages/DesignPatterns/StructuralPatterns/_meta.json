@@ -1,0 +1,9 @@
+{
+  "01-Proxy-Design-Pattern": "代理模式",
+  "02-Bridge-Design-Pattern": "桥接模式",
+  "03-Decorator-Pattern": "装饰模式",
+  "04-Adapter-Pattern": "适配器模式",
+  "05-Facade-Design-Pattern": "门面模式",
+  "06-Composite-Design-Pattern": "组合模式",
+  "07-Flyweight-Design-Pattern": "享元模式"
+}
