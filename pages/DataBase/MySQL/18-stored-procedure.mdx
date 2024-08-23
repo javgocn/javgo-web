@@ -1,11 +1,1111 @@
-# 使用存储过程
+# 存储过程
 
-## 存储过程
+## 基本介绍
 
-## 为什么要使用存储过程
+### 什么是存储过程
 
-## 执行存储过程
+存储过程（Stored Procedure）是**一组用于完成特定功能的 SQL 语句集**，存储在数据库中。它一次编译后永久有效，用户可以通过指定存储过程的名字并传递参数（如果该存储过程需要参数）来执行它。作为数据库系统中的重要对象，存储过程在处理大量数据时，能够显著提高系统的执行效率。
 
-## 创建存储过程
+### 数据库中的存储程序类型
 
-## 小结
+理解了存储过程的基本概念后，我们还需要了解数据库中存在的三种主要类型的存储程序：
+
+1. **存储过程**：这是最常见的存储程序。存储过程能够接受输入和输出参数，并可以在需要时执行。它通常用于执行一系列复杂的 SQL 操作。
+2. **存储函数**：存储函数与存储过程类似，但它返回一个值。存储函数可以嵌入到标准的 SQL 语句中使用，使得 SQL 的功能更加灵活和强大。
+3. **触发器**：触发器是在特定的数据库事件（如插入、更新或删除）发生时自动执行的存储程序。它通常用于数据校验、自动格式化或其他自动化的数据库操作。
+
+> **注意**：除了上述常见的存储程序类型外，其他数据库（如 Oracle）还提供了包和类等结构化存储程序。然而，MySQL 并不支持这些结构。
+
+### 为什么要使用存储程序
+
+虽然在现代开发中，存储程序的使用不如从前普遍，但我们不能因此否定它的价值。实际上，存储程序为数据库的使用和管理带来了诸多优势：
+
+1. **安全性提升**：存储程序为数据库提供了一层抽象，可以减少 SQL 注入等安全风险。虽然在应用层可以使用 `PreparedStatement` 可以缓解部分安全问题，但存储程序的封闭性和执行机制可以提供额外的安全保障。
+2. **提高代码可维护性**：存储程序通过将复杂的 SQL 逻辑集中管理，降低了代码与数据库之间的耦合度。即使底层数据结构发生变化，存储程序可以确保应用程序代码的稳定性，从而极大地提高了系统的可维护性。
+3. **减少网络负担**：存储程序在数据库服务器上执行，避免了大量数据在网络上传输。这不仅提高了执行效率，还减轻了网络带宽的压力。
+4. **跨平台的可移植性**：存储程序可以在不同的应用程序和数据库平台之间共享，支持不同架构的访问请求。这为系统的跨平台兼容性和一致性提供了极大的便利。
+5. **集中管理业务逻辑**：通过将数据相关的业务逻辑封装在存储程序中，开发者可以在数据库层次上实现更高效的逻辑处理。这种集中式的管理方式不仅提升了开发效率，还带来了更加独特的数据库编程体验。
+
+在某些情况下，存储程序还可以提升应用程序的可移植性，虽然在不同平台之间的移植可能会带来一些挑战。
+
+举个例子，在 Java 开发中，通常需要通过 JDBC 与数据库进行交互。为了防止 SQL 注入，我们通常使用 `PreparedStatement`，但这并不能完全避免安全问题。在 BS 架构中，浏览器向服务器发送请求，服务器再与数据库进行交互。在每次请求中，数据库都需要编译和执行 SQL 语句，这不仅浪费资源，还可能暴露数据库结构。如果我们将这些 SQL 操作封装在存储程序中，能够避免这些问题，并且提高安全性和性能。
+
+此外，存储程序还能大幅度提高数据库的可维护性。设想一下，数据库由一位 DBA 管理多年，如果他离职了，接任者可能会在理解和维护现有数据库结构上遇到困难。而通过存储程序统一管理和编译 SQL 语句，可以减少这种过渡中的问题，使数据库管理更加高效。
+
+## 存储过程的使用步骤
+
+### 存储过程的开发思想
+
+存储过程是数据库中一个非常重要的对象，它允许开发者将一组 SQL 语句封装在一起，用于执行复杂的业务逻辑。与 Java 中的方法类似，存储过程也可以接收输入参数并返回输出参数。其主要优势在于，一旦创建并编译，存储过程就被永久保存，后续调用无需再次编译，这极大地提升了执行效率。
+
+### 存储过程的优缺点
+
+虽然在前文已经讨论了存储过程的诸多优势，但为了系统性地理解，下面列出了存储过程的优点和缺点：
+
+| 优点                                                         | 缺点                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| **热修复能力**：在生产环境中，通过直接修改存储过程可以修复业务逻辑或 Bug，无需重启服务器，减少了系统停机时间。 | **过程化编程**：存储过程的编程风格通常是过程化的，当涉及复杂业务逻辑时，维护成本可能会很高。 |
+| **执行速度快**：存储过程在创建时已经编译，因此其执行速度比逐条 SQL 语句分别编译执行要快得多。 | **调试困难**：与应用层代码相比，存储过程的调试工具和手段较少，使得问题定位更加困难。 |
+| **减少网络流量**：由于存储过程在数据库服务器内部执行，大量数据操作避免了网络传输，降低了网络负担。 | **数据库特定**：不同数据库的存储过程语法可能不兼容，跨数据库迁移的可移植性差。 |
+| **易于维护**：开发者或 DBA 可以集中管理复杂的 SQL 逻辑，简化了系统的维护。 |                                                              |
+| **可移植性**：在相同数据库语法的环境下，存储过程有助于提高应用的可移植性。 |                                                              |
+
+### 存储过程的使用语法
+
+创建存储过程的语法相对简单，以下是一个基本的语法结构：
+
+```sql
+CREATE PROCEDURE 过程名(IN|OUT|INOUT 参数名 数据类型, ...)
+BEGIN
+    SQL语句;
+END;
+```
+
+要调用存储过程，使用以下语法：
+
+```sql
+CALL 过程名(参数值);
+```
+
+* **IN**：定义传入参数，表示只能传递值给存储过程。
+* **OUT**：定义输出参数，表示存储过程可以返回一个值。
+* **INOUT**：定义输入输出参数，即该参数既可以传入值，也可以返回值。
+* 如果括号内没有定义任何参数类型，那么该存储过程就是一个无参的存储过程。
+
+示例：使用存储过程查询员工的工资（无参）
+
+```sql
+-- 用于测试的数据库表
+CREATE TABLE `employees` (
+  `employee_id` bigint NOT NULL AUTO_INCREMENT COMMENT '员工 ID',
+  `name` varchar(50) DEFAULT NULL COMMENT '姓名',
+  `code` varchar(50) DEFAULT NULL COMMENT '员工编号',
+  `email` varchar(100) DEFAULT NULL COMMENT '电子邮件',
+  `phone` varchar(20) DEFAULT NULL COMMENT '电话号码',
+  `job_title` varchar(100) DEFAULT NULL COMMENT '职位名称',
+  `salary` decimal(10,2) DEFAULT NULL COMMENT '薪水',
+  `department_id` int DEFAULT NULL COMMENT '部门 ID',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `is_deleted` tinyint(1) NOT NULL DEFAULT '0' COMMENT '删除状态（0 未删除，1 已删除）',
+  
+  PRIMARY KEY (`employee_id`),
+  UNIQUE KEY `email` (`email`),
+  KEY `idx_department_id` (`department_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='员工信息表';
+
+-- 测试数据
+INSERT INTO `employees` (`name`, `code`, `email`, `phone`, `job_title`, `salary`, `department_id`)
+VALUES
+('张三', 'EMP001', 'zhangsan@example.com', '13812345678', '工程师', 8000.00, 1),
+('李四', 'EMP002', 'lisi@example.com', '13987654321', '经理', 12000.00, 2),
+('王五', 'EMP003', 'wangwu@example.com', '13765432109', '销售代表', 6000.00, 3),
+('赵六', 'EMP004', 'zhaoliu@example.com', '13698765432', '会计', 7000.00, 1),
+('孙七', 'EMP005', 'sunqi@example.com', '13587654321', '设计师', 9000.00, 2),
+('周八', 'EMP006', 'zhouba@example.com', '13476543210', '程序员', 10000.00, 3),
+('吴九', 'EMP007', 'wujiu@example.com', '13365432109', '行政助理', 5000.00, 1),
+('郑十', 'EMP008', 'zhengshi@example.com', '13276543210', '市场专员', 7500.00, 2),
+('陈十一', 'EMP009', 'chenshiyi@example.com', '13187654321', '运维工程师', 8500.00, 3),
+('刘十二', 'EMP010', 'liushier@example.com', '13098765432', '测试工程师', 9500.00, 1);
+```
+
+![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823185509769.png)
+
+下面是一个简单的存储过程示例，用于查询员工的工资。由于 SQL 语句的默认结束符为 `;`，在编写存储过程时，可能会遇到语法错误（如错误代码 1064）。为了解决此问题，我们可以使用 `DELIMITER` 关键字临时修改 SQL 语句的结束符，如下所示：
+
+```sql
+-- 临时定义结束符为"//"
+DELIMITER //
+
+-- 创建存储过程
+CREATE PROCEDURE se()
+BEGIN
+    SELECT salary FROM employee;
+END //
+
+-- 调用存储过程
+CALL se() //
+
+-- 删除已存在的存储过程se()
+DROP PROCEDURE IF EXISTS se //
+```
+
+> 注意事项：
+>
+> 1. 在定义和使用存储过程时，临时修改结束符是为了避免语法冲突。通过 `DELIMITER //` 将默认结束符 `; `更改为 `//`，可以顺利创建和执行存储过程。
+> 2. 在创建新版本的存储过程前，需要先删除已有的存储过程，避免名称冲突。通过 `DROP PROCEDURE IF EXISTS` 命令，可以安全地删除已有存储过程。
+> 3. 当完成存储过程的定义后，通常需要将结束符恢复为默认的 `;`，以避免后续 SQL 语句执行时出现问题。
+
+执行结果：
+
+![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823185822987.png)
+
+## 存储过程的变量和赋值
+
+在 MySQL 存储过程中，变量的使用非常灵活，包括**局部变量、用户变量、会话变量和全局变量**。不同类型的变量具有不同的作用范围和使用场景。
+
+### 局部变量
+
+局部变量是只在存储过程的 `BEGIN...END` 块中有效的变量。它们必须在使用之前声明，并且可以使用 `SET` 语句或 `SELECT...INTO` 语句进行赋值。
+
+局部变量的声明语法：
+
+```sql
+DECLARE var_name type [DEFAULT var_value];
+```
+
+使用 SET 赋值：
+
+```sql
+DELIMITER //
+
+CREATE PROCEDURE val_set()
+BEGIN
+  -- 声明一个默认值为'unknown'的局部变量val_name
+  DECLARE val_name VARCHAR(32) DEFAULT 'unknown';
+  
+  -- 为局部变量赋值
+  SET val_name = 'JAVGO';
+  
+  -- 查询局部变量的值
+  SELECT val_name;
+END //
+  
+CALL val_set() //
+```
+
+![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823191117369.png)
+
+使用 SELECT...INTO 接收查询结果：
+
+```sql
+DELIMITER //
+
+CREATE PROCEDURE val_into()
+BEGIN
+  -- 定义两个局部变量来存放name和code
+  DECLARE val_name VARCHAR(32) DEFAULT 'unknown';
+  DECLARE val_code VARCHAR(32) DEFAULT 'unknown';
+  
+  -- 查询表中id为17的name和code，并将结果赋值给局部变量
+  SELECT name,code INTO val_name,val_code FROM employees WHERE employee_id = 17;
+  
+  -- 查询局部变量的值
+  SELECT val_name,val_code;
+END //
+
+CALL val_into() //
+```
+
+![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823192254546.png)
+
+### 用户变量
+
+用户变量在**当前会话（连接）中有效**，类似于 Java 中的成员变量。用户变量的命名以`@`符号开头，并且无需提前声明，使用时即为声明。
+
+用户变量的语法：
+
+```sql
+SET @var_name = value;
+```
+
+使用示例：
+
+```sql
+DELIMITER //
+
+CREATE PROCEDURE val_user()
+BEGIN
+  -- 为用户变量赋值
+  SET @val_name = 'JAVGO';
+END //
+
+CALL val_user() //
+
+-- 查询用户变量的值（同一个连接中）
+SELECT @val_name //
+```
+
+![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823192921209.png)
+
+### 会话变量
+
+会话变量由**系统提供，并且仅在当前会话（连接）中有效**。它们用于控制 MySQL 的行为，常用于优化和调试。
+
+会话变量的语法：
+
+```sql
+@@session.var_name
+```
+
+使用示例：
+
+```sql
+-- 查看所有会话变量
+SHOW SESSION VARIABLES;
+```
+
+![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823193126599.png)
+
+```sql
+-- 查看指定的会话变量(最大连接数)
+SELECT @@session.max_connections;
+
+
+-- 修改指定的会话变量
+SET @@session.max_connections = 100;
+```
+
+会话变量控制 MySQL 实例的运行参数。通常情况下，我们可以根据需求调整这些变量以优化数据库性能。
+
+### 全局变量
+
+全局变量由系统提供，作用范围是整个 MySQL 服务器。它们影响所有会话，并且常用于全局设置。
+
+全局变量的语法：
+
+```sql
+@@global.var_name
+```
+
+使用示例：
+
+```sql
+-- 查看全局变量中变量名包含 char 的记录
+SHOW GLOBAL VARIABLES LIKE '%char%';
+
+-- 查看全局变量 character_set_client 的值
+SELECT @@global.character_set_client;
+```
+
+![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823193558543.png)
+
+![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823193613736.png)
+
+全局变量通常用于配置服务器级别的参数，例如字符集、连接限制等。
+
+
+
+### 入参出参
+
+存储过程支持输入参数（IN）、输出参数（OUT）和输入输出参数（INOUT），它们用于在存储过程中传递和返回数据。
+
+入参出参的语法：
+
+```sql
+IN|OUT|INOUT 参数名 数据类型
+```
+
+使用 IN 参数：
+
+```sql
+DELIMITER //
+
+CREATE PROCEDURE val_in(IN val_name VARCHAR(32))
+BEGIN
+  -- 为用户变量赋值
+  SET @val_name = val_name;
+END //
+
+CALL val_in('JAVGO') //
+
+-- 查询用户变量的值
+SELECT @val_name //
+```
+
+![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823194009918.png)
+
+使用 OUT 参数：
+
+```sql
+DELIMITER //
+
+CREATE PROCEDURE val_out(IN val_id INT, OUT val_name VARCHAR(32))
+BEGIN
+  -- 根据id查询员工的name并通过OUT参数返回
+  SELECT name INTO val_name FROM employees WHERE employee_id = val_id;
+END //
+
+CALL val_out(17, @name) //
+
+-- 查询用户变量的值
+SELECT @name //
+```
+
+![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823194255759.png)
+
+使用 INOUT 参数：
+
+```sql
+DELIMITER //
+
+CREATE PROCEDURE val_inout(IN val_name VARCHAR(32), INOUT val_code VARCHAR(32))
+BEGIN
+  -- 定义变量存储员工编号
+  DECLARE c VARCHAR(32);
+  
+  -- 赋值
+  SET c = val_code;
+  
+  -- 查询员工的code并通过INOUT参数返回
+  SELECT code INTO val_code FROM employees WHERE name = val_name;
+  
+  -- 拼接字符串并返回
+  SELECT CONCAT(c, '-', val_code) AS resul;
+END //
+
+-- 声明用户变量并赋值
+SET @codes = 'TestCode' //
+
+-- 调用存储过程并传递参数
+CALL val_inout('张三', @codes) //
+```
+
+![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823200729380.png)
+
+## 存储过程中的流程控制
+
+在存储过程中，流程控制语句用于执行条件判断和分支操作。MySQL 支持多种流程控制语句，其中最常用的是 `IF` 和 `CASE` 语句。
+
+### IF 条件判断
+
+`IF` 语句在存储过程中用于根据特定条件执行不同的操作。它与编程语言中的 `if-else` 结构类似，用于处理复杂的逻辑判断。
+
+语法格式：
+
+```sql
+IF 条件判断 THEN 
+    结果;
+[ELSEIF 条件判断 THEN 
+    结果;] ...
+[ELSE 
+    结果;]
+END IF;
+```
+
+示例：根据员工ID查询工资，并判断其工资标准
+
+```sql
+DELIMITER //
+
+CREATE PROCEDURE s_sql(IN val_id INT)
+BEGIN
+  -- 声明一个局部变量result存放工资标准结果
+  DECLARE result VARCHAR(32);
+  
+  -- 声明一个局部变量存放查询得到的工资
+  DECLARE s DOUBLE;
+  
+  -- 根据入参id查询工资
+  SELECT salary INTO s FROM employees WHERE employee_id = val_id;
+  
+  -- 使用IF语句判断工资标准
+  IF s <= 6000 THEN
+    SET result = '低工资标准';
+  ELSEIF s <= 10000 THEN
+    SET result = '中工资标准';
+  ELSEIF s <= 15000 THEN
+    SET result = '中上工资标准';
+  ELSE
+    SET result = '高工资标准';
+  END IF;
+  
+  -- 查询工资标准结果
+  SELECT result;
+END //
+
+-- 调用存储过程，传入参数
+CALL s_sql(17);
+```
+
+在这个示例中，根据传入的员工ID查询其工资，并通过 `IF` 语句将工资划分为不同的标准。根据不同的工资范围，存储过程返回相应的工资标准。
+
+![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823201542166.png)
+
+### CASE 条件判断
+
+`CASE` 语句是另一种流程控制语句，类似于 Java 中的 `switch `语句。它通常用于需要多个条件判断的场景。`CASE `语句有两种语法形式，分别是基于值的 `CASE` 语句和基于条件的 `CASE` 语句。
+
+**语法一**（基于值）：
+
+```sql
+CASE case_value
+    WHEN when_value THEN 结果;
+    [WHEN when_value THEN 结果;] ...
+    [ELSE 结果;]
+END CASE;
+```
+
+**语法二**（基于条件，推荐）：
+
+```sql
+CASE
+    WHEN 条件判断 THEN 结果;
+    [WHEN 条件判断 THEN 结果;] ...
+    [ELSE 结果;]
+END CASE;
+```
+
+**示例**：使用 `CASE` 语句判断员工工资标准。
+
+语法一：（基于值）
+
+```sql
+DELIMITER //
+
+CREATE PROCEDURE s_case(IN val_id INT)
+BEGIN
+  -- 声明一个局部变量result存放工资标准结果
+  DECLARE result VARCHAR(32);
+  
+  -- 声明一个局部变量存放查询得到的工资
+  DECLARE s DOUBLE;
+  
+  -- 根据入参id查询工资
+  SELECT salary INTO s FROM employees WHERE employee_id = val_id;
+  
+  -- 使用CASE语句判断工资标准
+  CASE s
+    WHEN 6000 THEN SET result = '低工资标准';
+    WHEN 10000 THEN SET result = '中工资标准';
+    WHEN 15000 THEN SET result = '中上工资标准';
+    ELSE SET result = '高工资标准';
+  END CASE;
+  
+  -- 查询工资标准结果
+  SELECT result;
+END //
+
+CALL s_case(17);
+```
+
+![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823202257584.png)
+
+语法二（基于条件，推荐）：
+
+```sql
+DELIMITER //
+
+CREATE PROCEDURE s_case2(IN val_id INT)
+BEGIN
+    -- 声明一个局部变量result存放工资标准结果
+    DECLARE result VARCHAR(32);
+    -- 声明一个局部变量存放查询得到的工资
+    DECLARE s DOUBLE;
+    
+    -- 根据入参id查询工资
+    SELECT salary INTO s FROM employees WHERE employee_id = val_id;
+    
+    -- 使用基于条件的CASE语句判断工资标准
+    CASE
+        WHEN s <= 6000 THEN SET result = '低工资标准';
+        WHEN s <= 10000 THEN SET result = '中工资标准';
+        WHEN s <= 15000 THEN SET result = '中上工资标准';
+        ELSE SET result = '高工资标准';
+    END CASE;
+    
+    -- 查询工资标准结果
+    SELECT result;
+END //
+
+CALL s_case2(17);
+```
+
+在这两个示例中，`CASE `语句根据工资的值或者条件判断来确定工资的分类。语法二更加灵活，通常也更容易维护，因此推荐使用。
+
+### LOOP 循环
+
+`LOOP` 是一个无限循环，除非通过 `LEAVE` 语句手动退出。可以将 `LEAVE` 看作是 Java 中的 `break`，而 `ITERATE` 则类似于 Java 中的 `continue`，用于跳过当前循环的剩余部分并继续下一次循环。
+
+语法格式：
+
+```sql
+[别名:] LOOP
+    循环语句;
+END LOOP [别名];
+```
+
+> **别名**：为循环起一个标签，方便控制循环的退出和继续。
+
+示例1：循环打印1到10（使用 `LEAVE` 控制循环退出，避免死循环的发生）
+
+```sql
+DELIMITER //
+
+CREATE PROCEDURE s_loop()
+BEGIN
+    -- 声明计数器
+    DECLARE i INT DEFAULT 1;
+
+    -- 开始循环
+    num: LOOP
+        -- 查询计数器记录的值
+        SELECT i;
+
+        -- 判断计数器是否达到10，达到时退出循环
+        IF i >= 10 THEN
+            LEAVE num;
+        END IF;
+
+        -- 计数器自增1
+        SET i = i + 1;
+    END LOOP num;
+END //
+
+CALL s_loop();
+```
+
+![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823203420018.png)
+
+示例2：循环打印1到10（使用 ITERATE 和 LEAVE 控制循环）,使用 `ITERATE` 跳过当前循环的剩余部分，继续下一次循环。
+
+```sql
+DELIMITER //
+
+CREATE PROCEDURE s_loop1()
+BEGIN
+    -- 声明变量i计数器
+    DECLARE i INT DEFAULT 1;
+
+    -- 声明字符串容器
+    DECLARE str VARCHAR(256) DEFAULT '1';
+
+    -- 开始循环
+    num: LOOP
+        -- 计数器自增1
+        SET i = i + 1;
+
+        -- 字符串容器拼接计数器结果
+        SET str = CONCAT(str, '-', i);
+
+        -- 如果计数器小于10，则继续循环
+        IF i < 10 THEN
+            ITERATE num;
+        END IF;
+
+        -- 如果计数器大于或等于10，则退出循环
+        LEAVE num;
+    END LOOP num;
+
+    -- 查询字符串容器的拼接结果
+    SELECT str;
+END //
+
+CALL s_loop1();
+```
+
+![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823203626198.png)
+
+### REPEAT 循环
+
+`REPEAT` 循环类似于 Java 中的 `do...while` 循环，先执行循环体，然后再判断条件是否满足，直到条件不满足才会结束循环。
+
+语法格式：
+
+```sql
+[别名:] REPEAT
+    循环语句;
+UNTIL 条件
+END REPEAT [别名];
+```
+
+示例：循环打印1到10
+
+```sql
+DELIMITER //
+
+CREATE PROCEDURE s_repeat()
+BEGIN
+  -- 声明计数器
+  DECLARE i INT DEFAULT 1;
+  
+  -- 声明字符串容器
+  DECLARE str VARCHAR(256) DEFAULT '1';
+  
+  -- 开始REPEAT循环
+  num: REPEAT
+    SET i = i + 1;
+    SET str = CONCAT(str, '-', i);
+  -- 直到i大于或等于10才结束循环
+  UNTIL i >= 10 END REPEAT num;
+  
+  -- 查询字符串容器的拼接结果
+  SELECT str;
+END //
+
+CALL s_repeat();
+```
+
+![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823203955577.png)
+
+### WHILE 循环
+
+`WHILE `循环与 Java 中的 `while` 循环非常相似，在满足条件时执行循环体，否则退出。
+
+语法格式：
+
+```sql
+[别名:] WHILE 条件 DO
+    循环语句;
+END WHILE [别名];
+```
+
+示例：循环打印1到10
+
+```sql
+DELIMITER //
+
+CREATE PROCEDURE s_while()
+BEGIN
+    -- 声明计数器
+    DECLARE i INT DEFAULT 1;
+
+    -- 声明字符串容器
+    DECLARE str VARCHAR(256) DEFAULT '1';
+
+    -- 开始WHILE循环
+    num: WHILE i < 10 DO
+        SET i = i + 1;
+        SET str = CONCAT(str, '+', i);
+    END WHILE num;
+
+    -- 查询字符串容器的拼接结果
+    SELECT str;
+END //
+
+CALL s_while();
+```
+
+![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823204124437.png)
+
+## 游标与 Handler
+
+在复杂的数据库操作中，有时候需要逐行处理查询结果，这时可以使用游标（Cursor）。同时，为了更好地控制异常和流程，我们可以使用Handler。
+
+### 游标（CURSOR ）
+
+游标用于遍历查询结果集并逐行处理数据。由于逐行处理可能导致效率较低，因此在性能要求较高的场景中应慎重使用。
+
+声明游标：
+
+```sql
+DECLARE 游标名 CURSOR FOR 查询语句;
+```
+
+打开游标：
+
+```sql
+OPEN 游标名;
+```
+
+获取游标结果：
+
+```sql
+FETCH 游标名 INTO var_name [, var_name] ...;
+```
+
+关闭游标：
+
+```sql
+CLOSE 游标名;
+```
+
+示例1：使用游标查询ID、Name 和 Salary
+
+```sql
+DELIMITER //
+
+CREATE PROCEDURE f()
+BEGIN
+  DECLARE val_id INT;
+  DECLARE val_name VARCHAR(32);
+  DECLARE val_salary DOUBLE;
+  
+  -- 声明游标
+  DECLARE emp_flag CURSOR FOR
+  SELECT employee_id,name,salary FROM employees;
+  
+  -- 打开游标
+  OPEN emp_flag;
+  
+  -- 获取游标结果
+  FETCH emp_flag INTO val_id, val_name, val_salary;
+  
+  -- 关闭游标
+  CLOSE emp_flag;
+  
+  -- 查询结果
+  SELECT val_id, val_name, val_salary;
+END //
+
+CALL f();
+```
+
+这个示例会输出第一行的 `id`、`name` 和 `salary`。由于游标默认逐行处理数据，如果只用一次 `FETCH` 语句，只能获取第一行记录。
+
+![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823205102930.png)
+
+为了获取所有记录，可以使用循环来遍历游标中的所有结果：
+
+```sql
+DELIMITER //
+
+CREATE PROCEDURE f1()
+BEGIN
+  DECLARE val_id INT;
+  DECLARE val_name VARCHAR(32);
+  DECLARE val_salary DOUBLE;
+  
+  -- 声明游标
+  DECLARE emp_flag CURSOR FOR
+  SELECT employee_id,name,salary FROM employees;
+  
+  -- 打开游标
+  OPEN emp_flag;
+  
+  -- 循环遍历游标
+  c: LOOP
+    -- 获取游标结果
+    FETCH emp_flag INTO val_id, val_name, val_salary;
+    
+    -- 查询结果
+    SELECT val_id, val_name, val_salary;
+  
+    -- 结束条件未设置，导致无限循环
+  END LOOP;
+  
+  -- 关闭游标
+  CLOSE emp_flag;
+END //
+
+CALL f1();
+```
+
+为避免无限循环，使用一个标志变量控制循环结束：
+
+```sql
+DELIMITER //
+
+CREATE PROCEDURE f1()
+BEGIN
+    DECLARE val_id INT;
+    DECLARE val_name VARCHAR(32);
+    DECLARE val_salary DOUBLE;
+    
+    -- 声明一个标志变量
+    DECLARE flag BOOLEAN DEFAULT TRUE;
+
+    -- 声明游标
+    DECLARE emp_flag CURSOR FOR
+    SELECT employee_id, name, salary FROM employees;
+
+    -- 打开游标
+    OPEN emp_flag;
+
+    -- 循环遍历游标
+    c: LOOP
+        FETCH emp_flag INTO val_id, val_name, val_salary;
+        
+        -- 当标志为true时继续查询
+        IF flag THEN
+            SELECT val_id, val_name, val_salary;
+        ELSE
+            -- 当标志为false时退出循环
+            LEAVE c;
+        END IF;
+    END LOOP;
+
+    -- 关闭游标
+    CLOSE emp_flag;
+END //
+
+CALL f1();
+```
+
+### 句柄（Handler ）
+
+Handler 用于处理异常或特定的数据库事件。在游标的操作中，Handler 常用于捕获 `NOT FOUND` 错误，当游标到达末尾时，自动设置标志位以退出循环。
+
+Handler 的语法：
+
+```sql
+DECLARE handler操作 HANDLER
+    FOR 情况列表...
+    操作语句;
+```
+
+Handler操作：
+
+* `CONTINUE`：继续执行。
+* `EXIT`：退出。
+* `UNDO`：撤销（MySQL 不支持）。
+
+情况列表：
+
+* `mysql_error_code`：MySQL 错误码。
+* `SQLSTATE [VALUE] sqlstate_value`：SQLSTATE 码。
+* `condition_name`：条件名称。
+* `SQLWARNING`：警告。
+* `NOT FOUND`：未找到结果。
+* `SQLEXCEPTION`：SQL异常。
+
+最终示例：使用 Handler 处理游标的结束
+
+```sql
+DELIMITER //
+
+CREATE PROCEDURE f1()
+BEGIN
+    DECLARE val_id INT;
+    DECLARE val_name VARCHAR(32);
+    DECLARE val_salary DOUBLE;
+    
+    -- 声明一个标志变量
+    DECLARE flag BOOLEAN DEFAULT TRUE;
+
+    -- 声明游标
+    DECLARE emp_flag CURSOR FOR
+    SELECT employee_id, name, salary FROM employee;
+
+    -- 使用Handler处理游标结束时的情况
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET flag = FALSE;
+
+    -- 打开游标
+    OPEN emp_flag;
+
+    -- 循环遍历游标
+    c: LOOP
+        FETCH emp_flag INTO val_id, val_name, val_salary;
+        
+        -- 当标志为true时继续查询
+        IF flag THEN
+            SELECT val_id, val_name, val_salary;
+        ELSE
+            -- 当标志为false时退出循环
+            LEAVE c;
+        END IF;
+    END LOOP;
+
+    -- 关闭游标
+    CLOSE emp_flag;
+END //
+
+CALL f1();
+```
+
+## 循环创建表
+
+在日常业务中，我们可能需要记录大量的用户行为数据，比如搜索记录、购买行为等。为了避免单张表过于庞大，导致查询和管理的效率降低，通常采用分表的策略。这里将介绍如何自动创建下个月每天对应的表，表名格式为 `emp_2024_08_01`、`emp_2024_08_02` 等，以便每天记录当天的数据。
+
+我们的目标是每月月底自动创建下个月每天的表。为了实现这一需求，我们可以通过存储过程来循环创建这些表。具体步骤如下：
+
+1. **预编译SQL语句**：使用 `PREPARE` 命令来预编译动态生成的 SQL 语句。
+2. **执行预编译语句**：通过 `EXECUTE` 命令执行预编译的 SQL 语句。
+3. **释放预编译资源**：使用 `DEALLOCATE` 或 `DROP` 命令释放预编译的资源。
+
+在创建表的过程中，我们需要处理日期相关的操作，常用的时间处理函数包括：
+
+* `EXTRACT(unit FROM date)`：提取日期中的指定部分。
+* `DATE_ADD(date,INTERVAL expr unit)`：日期加减运算。
+* `LAST_DAY(date)`：获取日期所在月的最后一天。
+* `YEAR(date)`：返回日期的年份。
+* `MONTH(date)`：返回日期的月份。
+* `DAYOFMONTH(date)`：返回日期中的日。
+
+以下存储过程 `sp_create_table` 将自动创建下个月的每天对应的表：
+
+```sql
+DELIMITER //
+
+CREATE PROCEDURE sp_create_table ( ) 
+BEGIN
+  -- 声明变量，用于存储下个月的年、月、日
+  DECLARE next_year INT;
+  DECLARE next_month INT;
+  DECLARE next_month_day INT;
+  
+  -- 声明变量，用于处理月和日的字符串格式
+  DECLARE next_month_str CHAR ( 2 );
+  DECLARE next_month_day_str CHAR ( 2 );
+  
+  -- 声明变量，用于存储表名
+  DECLARE table_name_str CHAR ( 10 );
+  
+  -- 索引变量，默认值为1
+  DECLARE t_index INT DEFAULT 1;
+  
+  -- 获取下个月的年份
+  SET next_year = YEAR ( date_add( now( ), INTERVAL 1 MONTH ) );
+  
+  -- 获取下个月的月份
+  SET next_month = MONTH ( date_add( now( ), INTERVAL 1 MONTH ) );
+  
+  -- 获取下个月最后一天的日期
+  SET next_month_day = dayofmonth( LAST_DAY( date_add( now( ), INTERVAL 1 MONTH ) ) );
+  
+  -- 格式化月份字符串
+  IF
+    next_month < 10 THEN SET next_month_str = concat( '0', next_month );
+  ELSE 
+    SET next_month_str = next_month;
+  END IF;
+  
+  -- 循环创建每天的表
+  WHILE
+      t_index <= next_month_day DO
+      
+      -- 格式化日期字符串
+      IF
+        t_index < 10 THEN SET next_month_day_str = concat( '0', t_index );
+      ELSE 
+         SET next_month_day_str = t_index;
+      END IF;
+      
+      -- 拼接表名字符串
+      SET table_name_str = concat( next_year, '_', next_month_str, '_', next_month_day_str );
+      
+      -- 构建创建表的SQL语句
+      SET @create_table_sql = concat( 'create table comp_', table_name_str, '(`grade` INT(11) NULL, `losal` INT(11) NULL, `hisal` INT(11) NULL) COLLATE=\'utf8_general_ci\' ENGINE=InnoDB' );
+      
+      -- 预编译SQL语句
+      PREPARE create_table_stmt FROM @create_table_sql;
+      
+      -- 执行预编译的SQL语句
+      EXECUTE create_table_stmt;
+      
+      -- 释放预编译资源
+      DEALLOCATE PREPARE create_table_stmt;
+      
+      -- 索引自增，处理下一个日期
+      SET t_index = t_index + 1;
+      
+    END WHILE;
+  
+END // 
+
+DELIMITER;
+```
+
+执行以下命令调用存储过程，完成下个月每天表的创建：
+
+```sql
+CALL sp_create_table();
+```
+
+## 其他补充
+
+### 存储过程的特性（Characteristic）
+
+在 MySQL 存储过程中，如果没有显式定义特性（Characteristic），MySQL 会自动使用一系列默认值来创建存储过程。
+
+以下是一些常见的存储过程特性及其默认值的解释：
+
+| 特性                 | 说明                                                         |
+| -------------------- | ------------------------------------------------------------ |
+| LANGUAGE SQL         | 指定存储过程所使用的编程语言。默认值为 `SQL`，即表示存储过程是使用 SQL 语言编写的。目前 MySQL 仅支持 SQL 语言，未来可能会支持其他语言。 |
+| NOT DETERMINISTIC    | 标识存储过程是否是确定性的。默认值为 `NOT DETERMINISTIC`，表示对于相同的输入，存储过程的输出不一定相同。目前此特性未被广泛使用，但为将来保留了扩展的可能性。 |
+| CONTAINS SQL         | 指定存储过程包含的 SQL 语句的类型。可选项包括：CONTAINS SQL（存储过程包含 SQL 语句，但不一定涉及数据的读写操作）、NO SQL（存储过程不包含任何 SQL 语句）、READS SQL DATA（存储过程仅读取数据，但不修改数据）、MODIFIES SQL DATA（存储过程包含修改数据的 SQL 语句） |
+| SQL SECURITY DEFINER | 定义存储过程的执行权限，决定是以创建者的权限还是调用者的权限执行存储过程。默认值为 `DEFINER`。DEFINER 表示存储过程以创建者的权限执行。如果当前用户具有执行存储过程的权限，并且创建者拥有访问表的权限，当前用户即可成功执行该存储过程。INVOKER 表示存储过程以调用者的权限执行。如果调用者没有访问表的权限，即便具有执行存储过程的权限，仍无法成功执行该存储过程。 |
+| COMMENT ''           | 用于存储过程的注释信息。可以为存储过程添加单行注释，便于维护和理解。注意，MySQL 只支持单行注释，换行符后的内容会被自动移除。 |
+
+### 死循环处理
+
+在编写存储过程或执行长时间运行的查询时，可能会遇到死循环的情况。为了解决这个问题，可以通过以下命令查看并终止相应的进程：
+
+```sql
+show processlist;
+kill <id>;
+```
+
+其中，`<id>` 是 `show processlist` 命令返回的进程 ID。
+
+### SELECT 语句中的 CASE 表达式
+
+在 `SELECT` 语句中，可以使用 `CASE` 表达式根据条件返回不同的结果。其基本语法如下：
+
+```sql
+select 
+	case
+		when 条件1 then 结果1
+		when 条件2 then 结果2
+		else 默认结果
+	end as 别名,
+	*
+from 表名;
+```
+
+这个结构允许根据不同的条件返回不同的计算结果，非常适合用于复杂的条件查询。
+
+### 复制表和数据
+
+要快速创建一个现有表的副本（包括表结构和数据），可以使用如下的 `CREATE TABLE ... SELECT ...` 语句：
+
+```sql
+CREATE TABLE employees SELECT * FROM db_sql.employees;
+```
+
+以上命令会创建 `employees` 表的副本，并复制相应的数据。
+
+### 临时表的使用
+
+临时表在 MySQL 中非常有用，特别是在需要存储中间结果进行进一步处理的情况下。以下是创建临时表并使用游标进行操作的示例：
+
+```sql
+delimiter //
+create procedure sp_create_table02(in dept_name varchar(32))
+begin
+    declare emp_no int;
+    declare emp_name varchar(32);
+    declare emp_sal decimal(7,2);
+    declare exit_flag int default 0;
+    
+    -- 定义游标，查询指定部门的员工信息
+    declare emp_cursor cursor for
+        select e.empno, e.ename, e.sal
+        from emp e inner join dept d on e.deptno = d.deptno 
+        where d.dname = dept_name;
+    
+    -- 定义退出处理器，当游标遍历完成时退出循环
+    declare continue handler for not found set exit_flag = 1;
+    
+    -- 创建临时表，用于存储员工数据
+    CREATE temporary TABLE `temp_table_emp` (
+        `empno` INT(11) NOT NULL COMMENT '员工编号',
+        `ename` VARCHAR(32) NULL COMMENT '员工姓名' COLLATE 'utf8_general_ci',
+        `sal` DECIMAL(7,2) NOT NULL DEFAULT '0.00' COMMENT '薪资',
+        PRIMARY KEY (`empno`) USING BTREE
+    )
+    COLLATE='utf8_general_ci'
+    ENGINE=InnoDB;
+    
+    -- 打开游标，开始遍历员工数据
+    open emp_cursor;
+    
+    c_loop: loop
+        -- 从游标中获取数据
+        fetch emp_cursor into emp_no, emp_name, emp_sal;
+        
+        -- 如果没有更多数据，则退出循环
+        if exit_flag != 1 then
+            insert into temp_table_emp values(emp_no, emp_name, emp_sal); 
+        else
+            leave c_loop;
+        end if;
+        
+    end loop c_loop;
+    
+    -- 查询临时表中的数据
+    select * from temp_table_emp;
+    
+    close emp_cursor;
+end//
+delimiter ;
+
+-- 调用存储过程，按部门名称查询员工信息
+call sp_create_table02('RESEARCH');
+```
+
+
+
+
+

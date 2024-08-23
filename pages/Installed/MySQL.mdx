@@ -86,6 +86,47 @@ GRANT ALL PRIVILEGES ON *.* TO 'root'@'%';
 
 > TIP: 在实际生产中建议将 `'root'@'%'` 修改为 `'root'@'localhost'` 仅允许本机访问，或者更改为对应的内网地址。
 
+如果上面进行授权时提示：
+
+```sql
+ERROR 1410 (42000): You are not allowed to create a user with GRANT
+```
+
+这个错误表示在当前的 MySQL 配置下，不允许通过这种方式创建用户并赋予权限。
+
+确认当前登录的确实是具有足够权限的 `root`  用户：执行  `SELECT CURRENT_USER();` 查看当前登录的用户。确保显示的是 `root@localhost` 或类似的具有足够权限的用户标识。
+
+```sql
+mysql> SELECT CURRENT_USER()
+    -> ;
++----------------+
+| CURRENT_USER() |
++----------------+
+| root@localhost |
++----------------+
+1 row in set (0.01 sec)
+```
+
+执行如下语句查看是否已经存在这个用户配置：
+
+```sql
+SELECT * FROM mysql.user WHERE user='root' AND host='%';
+
+-- 示例
+mysql> SELECT * FROM mysql.user WHERE user='root' AND host='%';
+Empty set (0.01 sec)
+```
+
+如果不存在，可以尝试重新创建这个用户并赋予权限：
+
+```sql
+ CREATE USER 'root'@'%' IDENTIFIED BY 'your_password';
+
+ GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+
+ FLUSH PRIVILEGES;
+```
+
 如果有需要可以设置容器自动重启。在 Docker 中，可以通过设置重启策略来控制容器的自动重启行为。Docker 提供了几种不同的重启策略：
 
 * no：不自动重启容器（默认值）。
