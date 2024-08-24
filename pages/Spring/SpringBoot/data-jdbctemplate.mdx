@@ -1,0 +1,2452 @@
+# Spring Boot 集成 JdbcTemplate
+
+## 基本介绍
+
+### JdbcTemplate 概念
+
+JdbcTemplate 是 Spring Framework 提供的一个用于简化 JDBC（Java Database Connectivity）操作的工具类。它封装了复杂的 JDBC API，使开发者能够更方便、快捷地执行数据库操作，如查询、插入、更新和删除。通过使用 JdbcTemplate，我们可以避免大量的样板代码，如创建连接、处理 SQL 异常和关闭资源等。这不仅提高了开发效率，还使代码更加简洁、可读。
+
+### JdbcTemplate 优势
+
+在企业级应用开发中，数据访问层（Data Access Layer，DAL）是核心组成部分。JdbcTemplate 的优势在于：
+
+* **简化开发**：通过封装底层的 JDBC API，减少了代码的重复性，开发者只需专注于业务逻辑的实现。
+* **增强可读性**：JdbcTemplate 提供了清晰简洁的 API，使得数据库操作更加直观。
+* **异常处理**：JdbcTemplate 统一了 SQL 异常处理，将 SQL 异常转换为 Spring 的 `DataAccessException`，使得异常处理更加一致。
+* **性能**：相比于 JPA 等 ORM 框架，JdbcTemplate 直接基于 SQL 操作，性能开销更小，适合对性能要求较高的场景。
+* **灵活性**：JdbcTemplate 保留了对原始 SQL 的控制权，适合需要手动优化 SQL 的场景。
+
+### JdbcTemplate 应用场景
+
+JdbcTemplate 适用于以下几种场景：
+
+* **轻量级应用**：在不需要复杂 ORM 框架的轻量级应用中，使用 JdbcTemplate 可以实现更高的开发效率和性能。
+* **性能关键型应用**：在对数据库访问性能要求较高的场景下，JdbcTemplate 由于其直接基于 JDBC 操作的特性，能够提供更好的性能表现。
+* **复杂查询场景**：在需要执行复杂 SQL 查询并需要手动优化 SQL 性能的场景下，JdbcTemplate 使得开发者能够完全控制 SQL 的执行过程。
+* **数据迁移与批量操作**：在大数据量的数据迁移或批量处理任务中，JdbcTemplate 的批量操作支持能够显著提高效率。
+
+### NamedParameterJdbcTemplate 概念
+
+NamedParameterJdbcTemplate 是 JdbcTemplate 的一个扩展版本，它引入了**命名参数**的概念，使得 SQL 语句更加易读和维护。使用 NamedParameterJdbcTemplate，可以**通过参数名称而不是位置来绑定参数**，避免了 SQL 中的位置参数（`?`）带来的混淆和维护成本。对于复杂 SQL 操作和需要动态构建 SQL 的场景，NamedParameterJdbcTemplate 提供了更大的灵活性。
+
+## 准备工作
+
+在使用 JdbcTemplate 和 NamedParameterJdbcTemplate 之前，首先需要进行一些基础的准备工作。这部分内容包括项目环境的配置、数据库的设置以及实体类与数据库表的映射。这些准备工作是整个项目开发的基础，确保我们在接下来的实践中能够顺利地实现各种数据库操作。
+
+### 项目环境配置
+
+#### Spring Boot版本选择
+
+Spring Boot 提供了开箱即用的功能，极大地简化了 Spring 应用的开发。在选择 Spring Boot 版本时，建议使用最新版的稳定版本，以获得最新的功能和性能优化，同时确保兼容性和安全性。
+
+推荐版本：
+
+* **Spring Boot 2.x**：如果项目已有一段时间，且对新特性需求不高，2.x 系列是一个成熟稳定的选择。
+* **Spring Boot 3.x**：对于新项目或需要使用 Java 17 及以上版本的新特性，3.x 系列更为合适，提供了更多优化和现代化的开发体验。
+
+#### Maven 依赖配置
+
+在 Spring Boot 项目中，JdbcTemplate 和 NamedParameterJdbcTemplate 默认包含在 `spring-boot-starter-jdbc` 依赖中，因此只需在项目的构建文件中添加相关依赖即可。
+
+Maven 配置：
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-jdbc</artifactId>
+</dependency>
+
+<dependency>
+    <groupId>mysql</groupId> <!-- 这里以MySQL为例，其他数据库请根据需求配置 -->
+    <artifactId>mysql-connector-java</artifactId>
+    <scope>runtime</scope>
+</dependency>
+```
+
+这些依赖将会自动下载并配置所有必要的库，确保项目中可以直接使用 JdbcTemplate 和 NamedParameterJdbcTemplate。
+
+### 数据库配置
+
+Spring Boot 提供了多种方式来配置数据库连接信息。推荐使用 `application.yml` 文件进行配置，因为它结构清晰，便于阅读和维护。
+
+application.yml 配置示例：
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/db_boot?useSSL=false&serverTimezone=UTC
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+```
+
+### 实体类与数据库表映射
+
+#### 创建实体类
+
+假设我们要管理一个简单的用户信息表  `users`，每个用户具有  `id`、`name`、`email`  和  `age`  属性。我们可以创建一个相应的实体类  `User`：
+
+```java
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@RequiredArgsConstructor
+public class User {
+
+    private Long id;
+    private String name;
+    private String email;
+    private Integer age;
+}
+```
+
+#### 数据库表的设计与创建
+
+在 MySQL 中，我们可以通过以下 SQL 语句来创建与 `User` 实体类对应的 `users` 表：
+
+```sql
+CREATE TABLE users (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    age INT
+);
+```
+
+## JdbcTemplate 基础用法
+
+### JdbcTemplate 注入方式
+
+在 Spring Boot 中，JdbcTemplate 通常通过依赖注入的方式来使用。我们可以通过构造器注入或字段注入的方式将 JdbcTemplate 注入到服务类中。
+
+#### 通过构造器注入
+
+构造器注入是推荐的依赖注入方式，因为它可以确保依赖项在对象创建时即被初始化。下面是一个示例，展示了如何通过构造器注入 JdbcTemplate：
+
+```java
+@Service
+public class UserService {
+
+    private final JdbcTemplate jdbcTemplate;
+
+    public UserService(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+}
+```
+
+#### 通过字段注入
+
+虽然构造器注入是推荐的方式，但在某些情况下，字段注入也被广泛使用，尤其是在较小的项目中。字段注入使用 `@Autowired` 注解来自动注入依赖项：
+
+```java
+@Service
+public class UserService {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+}
+```
+
+这种方式虽然使用方便，但缺点是无法通过构造函数确保依赖项的注入。
+
+### 数据库查询
+
+JdbcTemplate 提供了丰富的方法用于执行各种类型的数据库查询操作，包括查询单条记录、多条记录以及返回 `Map` 或 `List` 结果。
+
+#### 查询单条记录（queryForObject）
+
+在 JdbcTemplate 中，`queryForObject` 方法用于查询单条记录并将其映射为对象。随着 Spring Framework 的发展，一些旧方法被标记为过时，并引入了新的方法以提高灵活性和易用性。
+
+方法签名分析：
+
+```java
+@Nullable
+public <T> T queryForObject(String sql, Object[] args, int[] argTypes, RowMapper<T> rowMapper) throws DataAccessException {
+    List<T> results = (List)this.query(sql, args, argTypes, (ResultSetExtractor)(new RowMapperResultSetExtractor(rowMapper, 1)));
+    return DataAccessUtils.nullableSingleResult(results);
+}
+```
+
+参数含义：
+
+* `String sql`: SQL 查询语句，通常包含一个  `SELECT`  语句，可能包含参数占位符。
+* `Object[] args`:  参数数组，用于替换 SQL 语句中的占位符（`?`）。
+* `int[] argTypes`: 参数类型数组，对应  `args`  中每个参数的 JDBC 类型（如  `Types.INTEGER`, `Types.VARCHAR` 等）。
+* `RowMapper<T> rowMapper`: `RowMapper` 是一个接口，用于将  `ResultSet`  中的一行数据映射为 Java 对象。
+
+处理逻辑如下：
+
+* 该方法首先使用 `query` 方法执行 SQL 查询，传入参数和对应的参数类型，并将 `ResultSet` 的处理委托给 `RowMapperResultSetExtractor`，该类内部使用 `RowMapper` 来处理每一行的数据映射。
+* 然后，使用 `DataAccessUtils.nullableSingleResult(results)` 从结果集中获取单条记录。这个方法会确保返回结果为单条记录，如果结果集为空，返回 `null`，如果有多条记录则抛出异常。
+
+⚠ 过时的 `queryForObject` 方法：
+
+```sql
+@Deprecated
+@Nullable
+public <T> T queryForObject(String sql, @Nullable Object[] args, RowMapper<T> rowMapper) throws DataAccessException {
+    List<T> results = (List)this.query((String)sql, (Object[])args, (ResultSetExtractor)(new RowMapperResultSetExtractor(rowMapper, 1)));
+    return DataAccessUtils.nullableSingleResult(results);
+}
+```
+
+这个方法与前一个方法的主要区别在于它没有 `argTypes` 参数，适用于不需要明确指定参数类型的情况。由于 JDBC 参数类型不明确可能导致一些潜在问题，因此该方法已被标记为过时。
+
+ 推荐的 `queryForObject` 方法：
+
+```sql
+@Nullable
+public <T> T queryForObject(String sql, RowMapper<T> rowMapper, @Nullable Object... args) throws DataAccessException {
+    List<T> results = (List)this.query((String)sql, (Object[])args, (ResultSetExtractor)(new RowMapperResultSetExtractor(rowMapper, 1)));
+    return DataAccessUtils.nullableSingleResult(results);
+}
+```
+
+这个方法是推荐的使用方式，通过变长参数 `Object... args` 提供参数，并且结合了 `RowMapper` 以灵活地处理查询结果。
+
+处理逻辑如下：
+
+* 与前面的方法类似，`queryForObject` 调用了 `query` 方法来执行 SQL 查询，参数使用 `Object... args` 来灵活传递。
+* 通过 `RowMapper` 将 `ResultSet` 中的数据映射为对象，然后使用 `DataAccessUtils.nullableSingleResult(results)` 提取结果。
+
+因此，当我们希望查询数据库中的单条记录时，可以使用上面这个  `queryForObject`  方法。这个方法要求 SQL 查询返回一行数据，并将结果映射为指定类型的对象。
+
+```java
+/**
+ * 根据用户ID查找用户
+ *
+ * @param id 用户ID，作为查询条件
+ * @return 匹配的用户对象，若不存在则返回null
+ */
+public User findUserById(Long id) {
+    // 定义查询语句，使用 ? 作为占位符，防止 SQL 注入
+    String sql = "SELECT * FROM users WHERE id = ?";
+
+    // 使用 jdbcTemplate 的 queryForObject 方法执行查询，并将结果映射为 User 对象
+    // 第一个参数为 SQL 语句，第二个参数为参数对象数组，第三个参数为 RowMapper 接口的实现
+    // RowMapper 用于将 ResultSet 的每一行映射为一个 User 对象
+    return jdbcTemplate.queryForObject(sql, (rs, rowNum) ->
+        new User(
+            rs.getLong("id"),
+            rs.getString("name"),
+            rs.getString("email"),
+            rs.getInt("age")
+        ), id
+    );
+}
+```
+
+#### 查询多条记录（query）
+
+如果查询的结果可能包含多条记录，可以使用 `query` 方法。这个方法返回一个包含所有结果的 `List`，每个结果可以映射为一个对象。
+
+`JdbcTemplate` 的 `query` 方法用于执行 SQL 查询，并将结果集通过不同的方式进行处理。根据不同的需求，`query` 方法有多个重载版本，可以返回单个对象、列表或通过回调函数逐行处理结果集。
+
+先来看看 `query` 方法（带 `ResultSetExtractor`）的源码：
+
+```java
+@Nullable
+public <T> T query(final String sql, final ResultSetExtractor<T> rse) throws DataAccessException {
+    // 参数检查，确保 SQL 语句和 `ResultSetExtractor` 非空
+    Assert.notNull(sql, "SQL must not be null");
+    Assert.notNull(rse, "ResultSetExtractor must not be null");
+    if (this.logger.isDebugEnabled()) {
+        this.logger.debug("Executing SQL query [" + sql + "]");
+    }
+
+    class QueryStatementCallback implements StatementCallback<T>, SqlProvider {
+        QueryStatementCallback() {
+        }
+
+        @Nullable
+        public T doInStatement(Statement stmt) throws SQLException {
+            ResultSet rs = null;
+            Object var3;
+            try {
+                // 执行 SQL 查询，获取 `ResultSet`，
+                rs = stmt.executeQuery(sql);
+                // 通过 `ResultSetExtractor` 的 `extractData` 方法处理 `ResultSet`
+                var3 = rse.extractData(rs);
+            } finally {
+                // 闭 `ResultSet` 以释放资源
+                JdbcUtils.closeResultSet(rs);
+            }
+            return var3;
+        }
+
+        public String getSql() {
+            return sql;
+        }
+    }
+
+    // 执行查询, 传入 `QueryStatementCallback` 作为回调处理逻辑，最后返回结果
+    return this.execute(new QueryStatementCallback(), true);
+}
+```
+
+参数含义：
+
+* `String sql`: SQL 查询语句。
+* `ResultSetExtractor<T> rse`: `ResultSetExtractor` 是一个回调接口，用于处理 `ResultSet` 并返回一个结果对象。
+
+处理逻辑：
+
+* **参数检查**：首先，使用 `Assert.notNull` 确保 SQL 语句和 `ResultSetExtractor` 非空。如果 `sql` 或 `rse` 为 `null`，会抛出 `IllegalArgumentException`。
+* **日志记录**：如果调试模式开启，记录 SQL 查询语句。
+* **内部类 `QueryStatementCallback`**：
+  * 实现了 `StatementCallback<T>` 和 `SqlProvider` 接口。
+  * `doInStatement` 方法中执行 SQL 查询，获取 `ResultSet`，并通过 `ResultSetExtractor` 的 `extractData` 方法处理 `ResultSet`。
+  * 处理完成后，关闭 `ResultSet` 以释放资源。
+* **执行查询**：调用 `execute` 方法执行查询，传入 `QueryStatementCallback` 作为回调处理逻辑，最后返回结果。
+
+这个版本的 `query` 方法非常灵活，**适用于自定义 `ResultSet` 处理逻辑的场景**。`ResultSetExtractor` 接口允许用户定义如何处理整个结果集。
+
+------
+
+再来看看基于上述方法的另外一个版本 `query` 方法（带 `RowCallbackHandler`）：
+
+```java
+public void query(String sql, RowCallbackHandler rch) throws DataAccessException {
+    this.query((String)sql, (ResultSetExtractor)(new RowCallbackHandlerResultSetExtractor(rch)));
+}
+```
+
+参数含义：
+
+* `String sql`: SQL 查询语句。
+* `RowCallbackHandler rch`: `RowCallbackHandler` 是一个回调接口，用于逐行处理 `ResultSet` 中的每一行数据。
+
+处理逻辑：
+
+* 该方法内部调用了带 `ResultSetExtractor` 的 `query` 方法。
+* 通过 `RowCallbackHandlerResultSetExtractor`，将每一行的 `ResultSet` 数据传递给 `RowCallbackHandler` 处理。
+
+此方法**适用于需要逐行处理结果集的场景，而不是将整个结果集映射为一个对象或列表**。例如，在需要在处理数据的同时执行某些操作（如记录日志或更新状态）时，可以使用这种方式。
+
+------
+
+最后看看 `query` 方法（带 `RowMapper`）：
+
+```java
+public <T> List<T> query(String sql, RowMapper<T> rowMapper) throws DataAccessException {
+    return (List)result((List)this.query((String)sql, (ResultSetExtractor)(new RowMapperResultSetExtractor(rowMapper))));
+}
+```
+
+参数含义：
+
+* `String sql`: SQL 查询语句。
+* `RowMapper<T> rowMapper`: `RowMapper` 是一个接口，用于将 `ResultSet` 中的每一行数据映射为指定类型的对象。
+
+处理逻辑：
+
+* 该方法内部调用了 `query` 方法，通过 `RowMapperResultSetExtractor` 来处理 `ResultSet`。
+* `RowMapperResultSetExtractor` 使用提供的 `RowMapper` 对象逐行处理结果集，将每一行映射为对象。
+* 返回的结果是一个包含映射对象的 `List<T>`。
+
+这个版本的 `query` 方法**适用于需要将查询结果集映射为 Java 对象的场景**。通过 `RowMapper` 接口，开发者可以自定义如何将数据库表的每一行映射为 Java 对象，适合于 ORM 的需求。
+
+> Note：`JdbcTemplate` 的 `query` 方法提供了多种灵活的接口来处理 SQL 查询的结果集：
+>
+> 1. **带 `ResultSetExtractor` 的 `query` 方法**：适用于需要自定义处理整个 `ResultSet` 的场景。`ResultSetExtractor` 接口允许开发者在查询完成后一次性处理整个结果集，并将其转换为所需的对象。
+> 2. **带 `RowCallbackHandler` 的 `query` 方法**：适用于逐行处理 `ResultSet` 的场景。每一行数据将被传递给 `RowCallbackHandler` 进行处理，而不是将整个结果集一次性映射为对象或集合。
+> 3. **带 `RowMapper` 的 `query` 方法**：适用于将结果集的每一行映射为 Java 对象的场景。最终的结果是一个包含映射对象的 `List<T>`，适合用作数据访问层的一部分。
+
+对于查询所有用户的需求，属于 ORM 的场景，不需要额外的特殊处理，可以选用带 `RowMapper` 的 `query` 方法：
+
+```java
+public List<User> findAllUsers() {
+    String sql = "SELECT * FROM users";
+    return jdbcTemplate.query(sql, (rs, rowNum) ->
+        new User(
+                rs.getLong("id"),
+                rs.getString("name"),
+                rs.getString("email"),
+                rs.getInt("age")
+        )
+    );
+}
+```
+
+#### 查询返回 Map
+
+有时候，我们需要直接将查询结果作为 `Map` 或 `List` 返回，JdbcTemplate 提供了多种方法来实现这一需求。
+
+`queryForMap` 方法用于执行 SQL 查询，并将单行结果映射为 `Map<String, Object>`，其中键为列名，值为相应的字段值。
+
+```java
+public Map<String, Object> findUserAsMap(Long id)  {
+    String sql = "SELECT * FROM users WHERE id = ?";
+    return jdbcTemplate.queryForMap(sql, id);
+}
+```
+
+方法签名分析：
+
+```java
+public Map<String, Object> queryForMap(String sql, Object[] args, int[] argTypes) throws DataAccessException {
+    return (Map)result((Map)this.queryForObject(sql, args, argTypes, this.getColumnMapRowMapper()));
+}
+```
+
+参数含义：
+
+* `String sql`: SQL 查询语句。
+* `Object[] args`: 参数数组。
+* `int[] argTypes`: 参数类型数组。
+
+处理逻辑：
+
+* 该方法调用了 `queryForObject` 方法，使用 `getColumnMapRowMapper()` 将查询结果转换为 `Map<String, Object>`。
+* 返回的结果通过 `result()` 方法进行处理并返回。
+
+再看看无 `argTypes` 参数的 `queryForMap` 方法：
+
+```java
+public Map<String, Object> queryForMap(String sql, @Nullable Object... args) throws DataAccessException {
+    return (Map)result((Map)this.queryForObject(sql, args, this.getColumnMapRowMapper()));
+}
+```
+
+这个方法与前者类似，但不需要显式指定参数类型，更加简洁，适合不需要明确类型控制的场景。
+
+处理逻辑：
+
+* 直接使用 `Object... args` 传递参数，调用 `queryForObject` 进行查询。
+* 结果映射为 `Map<String, Object>` 并返回。
+
+#### 查询返回 List
+
+`queryForList` 方法用于执行查询并返回一个 `List`，每个元素是查询结果的一行数据，可以是简单类型的列表或 `Map` 的列表。
+
+方法签名分析：
+
+```java
+public <T> List<T> queryForList(String sql, Class<T> elementType) throws DataAccessException {
+    return this.query(sql, this.getSingleColumnRowMapper(elementType));
+}
+```
+
+参数含义：
+
+* `String sql`: SQL 查询语句。
+* `Class<T> elementType`: 列类型，用于将查询结果中的单列映射为该类型的对象。
+
+该方法使用 `getSingleColumnRowMapper(elementType)` 来创建一个单列映射器，将结果集中单列数据映射为指定类型的对象，并返回包含这些对象的列表。
+
+再来看看查询多行数据的 `queryForList` 方法：
+
+```java
+public List<Map<String, Object>> queryForList(String sql) throws DataAccessException {
+    return this.query(sql, this.getColumnMapRowMapper());
+}
+```
+
+该方法使用 `getColumnMapRowMapper()` 将每行结果映射为 `Map<String, Object>`，然后返回 `List<Map<String, Object>>`，每个 `Map` 代表一行数据。
+
+使用示例：
+
+```java
+public List<Map<String, Object>> findAllUserAsMap() {
+    String sql = "SELECT * FROM users";
+    return jdbcTemplate.queryForList(sql);
+}
+```
+
+### 数据库更新与删除
+
+在 `JdbcTemplate` 中，`update` 方法用于执行 SQL 的更新、删除和插入操作。它是对数据库进行写操作的核心方法之一。该方法有多个重载版本，可以处理不同的场景，包括带参数的 SQL 语句、返回生成的键等。
+
+`update` 方法（核心实现）：
+
+```java
+protected int update(final PreparedStatementCreator psc, @Nullable final PreparedStatementSetter pss) throws DataAccessException {
+    // 日志记录
+    this.logger.debug("Executing prepared SQL update");
+    // 调用 `execute` 方法，传入 `PreparedStatementCreator` 和 `PreparedStatement` 的回调处理逻辑
+    // 通过 updateCount 方法返回受影响的行数。
+    return updateCount((Integer)this.execute(psc, (ps) -> {
+        boolean var9 = false;
+        Integer var4;
+        try {
+            var9 = true;
+            
+            // 如果 PreparedStatementSetter (pss) 不为空，则调用 pss.setValues(ps) 方法设置 SQL 语句的参数。
+            if (pss != null) {
+                pss.setValues(ps);
+            }
+
+            // 执行 ps.executeUpdate() 方法，执行 SQL 更新操作，并返回受影响的行数。
+            int rows = ps.executeUpdate();
+            if (this.logger.isTraceEnabled()) {
+                this.logger.trace("SQL update affected " + rows + " rows");
+            }
+
+            var4 = rows;
+            var9 = false;
+        } finally {
+            if (var9) {
+                // 如果 pss 实现了 ParameterDisposer 接口，则调用 cleanupParameters 方法进行参数清理，确保资源正确释放。
+                if (pss instanceof ParameterDisposer parameterDisposer) {
+                    parameterDisposer.cleanupParameters();
+                }
+            }
+        }
+
+        if (pss instanceof ParameterDisposer parameterDisposerx) {
+            parameterDisposerx.cleanupParameters();
+        }
+
+        return var4;
+    }, true));
+}
+```
+
+参数含义：
+
+* `PreparedStatementCreator psc`: 用于创建 `PreparedStatement` 的回调接口，通常用于处理带有参数的 SQL 语句。
+* `PreparedStatementSetter pss`: 可选的回调接口，用于设置 `PreparedStatement` 的参数。
+
+处理逻辑：
+
+1. **日志记录**：如果调试模式开启，记录 SQL 更新操作的执行情况。
+2. **执行 SQL 语句**：
+   * 调用 `execute` 方法，传入 `PreparedStatementCreator` 和 `PreparedStatement` 的回调处理逻辑。
+   * 如果 `PreparedStatementSetter` (`pss`) 不为空，则调用 `pss.setValues(ps)` 方法设置 SQL 语句的参数。
+   * 执行 `ps.executeUpdate()` 方法，执行 SQL 更新操作，并返回受影响的行数。
+3. **处理参数清理**：如果 `pss` 实现了 `ParameterDisposer` 接口，则调用 `cleanupParameters` 方法进行参数清理，确保资源正确释放。
+4. **返回结果**：通过 `updateCount` 方法返回受影响的行数。
+
+------
+
+`update` 方法（简化版本）：
+
+```java
+public int update(PreparedStatementCreator psc) throws DataAccessException {
+    return this.update(psc, (PreparedStatementSetter)null);
+}
+```
+
+这是 `update` 方法的简化版本，不使用 `PreparedStatementSetter`。直接调用核心 `update` 方法，`pss` 参数为 `null`。适用于不需要设置参数的简单 SQL 语句。
+
+------
+
+`update` 方法（处理生成的键）：
+
+```java
+public int update(final PreparedStatementCreator psc, final KeyHolder generatedKeyHolder) throws DataAccessException {
+    // 检查 KeyHolder：确保 KeyHolder 非空。
+    Assert.notNull(generatedKeyHolder, "KeyHolder must not be null");
+    // 日志记录：记录 SQL 更新操作及生成的键。
+    this.logger.debug("Executing SQL update and returning generated keys");
+    
+    // 执行 SQL 
+    return updateCount((Integer)this.execute(psc, (ps) -> {
+        // 执行 ps.executeUpdate() 方法，执行 SQL 更新操作，获取受影响的行数。
+        int rows = ps.executeUpdate();
+        
+        // 清空 KeyHolder 中的键列表，然后通过 storeGeneratedKeys 方法将生成的键存储到 KeyHolder 中。
+        generatedKeyHolder.getKeyList().clear();
+        this.storeGeneratedKeys(generatedKeyHolder, ps, 1);
+        if (this.logger.isTraceEnabled()) {
+            this.logger.trace("SQL update affected " + rows + " rows and returned " + generatedKeyHolder.getKeyList().size() + " keys");
+        }
+
+        // 返回结果：返回受影响的行数。
+        return rows;
+    }, true));
+}
+```
+
+参数含义：
+
+* `KeyHolder generatedKeyHolder`: 用于存储生成的键（如自增主键）的对象。
+
+处理逻辑：
+
+1. **检查 `KeyHolder`**：确保 `KeyHolder` 非空。
+2. **日志记录**：记录 SQL 更新操作及生成的键。
+3. **执行 SQL 语句**：
+   * 执行 `ps.executeUpdate()` 方法，执行 SQL 更新操作，获取受影响的行数。
+   * 清空 `KeyHolder` 中的键列表，然后通过 `storeGeneratedKeys` 方法将生成的键存储到 `KeyHolder` 中。
+4. **返回结果**：返回受影响的行数。
+
+> TIP：此方法适用于需要在执行插入操作后获取生成键（如自增 ID）的场景。
+
+------
+
+`update` 方法（带 `PreparedStatementSetter`）：
+
+```java
+public int update(String sql, @Nullable PreparedStatementSetter pss) throws DataAccessException {
+    return this.update((PreparedStatementCreator)(new SimplePreparedStatementCreator(sql)), (PreparedStatementSetter)pss);
+}
+```
+
+处理逻辑：该方法接受一个 SQL 语句和可选的 `PreparedStatementSetter`，通过 `SimplePreparedStatementCreator` 创建 `PreparedStatement`，然后调用核心 `update` 方法执行 SQL 操作。
+
+> TIP：适用于简单的 SQL 更新、删除或插入操作。
+
+------
+
+`update` 方法（带参数和参数类型）：
+
+```java
+public int update(String sql, Object[] args, int[] argTypes) throws DataAccessException {
+    return this.update(sql, this.newArgTypePreparedStatementSetter(args, argTypes));
+}
+```
+
+参数含义：
+
+* `Object[] args`: 参数数组，用于替换 SQL 语句中的占位符。
+* `int[] argTypes`: 参数类型数组，对应 `args` 中每个参数的 JDBC 类型（如 `Types.INTEGER`, `Types.VARCHAR` 等）。
+
+处理逻辑：通过 `newArgTypePreparedStatementSetter` 方法创建 `PreparedStatementSetter`，设置参数及其类型，然后调用 `update` 方法执行 SQL 操作。
+
+> TIP：适用于需要明确指定参数类型的 SQL 操作。
+
+------
+
+`update` 方法（带参数）：
+
+```java
+public int update(String sql, @Nullable Object... args) throws DataAccessException {
+    return this.update(sql, this.newArgPreparedStatementSetter(args));
+}
+```
+
+参数含义：
+
+* `Object... args`: 参数列表，用于替换 SQL 语句中的占位符。
+
+处理逻辑：通过 `newArgPreparedStatementSetter` 方法创建 `PreparedStatementSetter`，仅设置参数（不指定类型），然后调用 `update` 方法执行 SQL 操作。
+
+> TIP：适用于无需明确指定参数类型的简单 SQL 操作。
+
+> Note：
+>
+> `JdbcTemplate` 的 `update` 方法提供了多种形式，以处理各种更新、删除和插入操作：
+>
+> 1. **核心 `update` 方法**：接受 `PreparedStatementCreator` 和 `PreparedStatementSetter`，适用于复杂的场景，需要灵活地设置 SQL 参数。
+> 2. **简化 `update` 方法**：不使用 `PreparedStatementSetter`，适用于不需要设置参数的简单 SQL 操作。
+> 3. **处理生成的键的 `update` 方法**：用于插入操作后获取生成键，如自增主键。
+> 4. **带 `PreparedStatementSetter` 的 `update` 方法**：使用 `PreparedStatementSetter` 设置参数，适用于大多数简单的 SQL 操作。
+> 5. **带参数和参数类型的 `update` 方法**：允许明确指定参数及其类型，适用于需要精确控制 SQL 参数的场景。
+> 6. **带参数的 `update` 方法**：简化参数设置，不指定类型，适用于简单的 SQL 操作。
+
+#### 执行插入操作（update）
+
+下面的示例展示了如何使用 `update` 方法插入一条新记录：
+
+```java
+public void insertUser(User user) {
+    String sql = "INSERT INTO users (name, email, age) VALUES (?, ?, ?)";
+    jdbcTemplate.update(sql, user.getName(), user.getEmail(), user.getAge());
+}
+```
+
+该方法返回插入的行数，通常为 1。
+
+#### 执行更新操作（update）
+
+类似地，我们可以使用 `update` 方法更新现有的记录：
+
+```java
+public void updateUser(User user) {
+    String sql = "UPDATE users SET name = ?, email = ?, age = ? WHERE id = ?";
+    jdbcTemplate.update(sql, user.getName(), user.getEmail(), user.getAge(), user.getId());
+}
+```
+
+该方法返回被更新的行数。
+
+#### 执行删除操作（update）
+
+删除操作同样可以通过 `update` 方法来实现：
+
+```java
+public int deleteUser(Long id) {
+    String sql = "DELETE FROM users WHERE id = ?";
+    return jdbcTemplate.update(sql, id);
+}
+```
+
+该方法返回被删除的行数。
+
+### 批量操作
+
+在 `JdbcTemplate` 中，`batchUpdate` 方法用于执行批量更新、删除和插入操作。通过批量操作可以显著提高数据库操作的效率，特别是在处理大量数据时。
+
+`batchUpdate` 方法（带 `PreparedStatementCreator` 和 `BatchPreparedStatementSetter`）：
+
+```java
+public int[] batchUpdate(final PreparedStatementCreator psc, final BatchPreparedStatementSetter pss, final KeyHolder generatedKeyHolder) throws DataAccessException {
+    // 调用 execute 方法，传入 PreparedStatementCreator 和 PreparedStatementCallback 来执行批量操作。
+    // 由 BatchPreparedStatementSetter 设置批次中的每个 PreparedStatement 参数。
+    int[] result = (int[])this.execute(psc, this.getPreparedStatementCallback(pss, generatedKeyHolder));
+    Assert.state(result != null, "No result array");
+    return result;
+}
+```
+
+参数含义：
+
+* `PreparedStatementCreator psc`: 用于创建 `PreparedStatement` 的回调接口。
+* `BatchPreparedStatementSetter pss`: 用于设置批量操作中每个 `PreparedStatement` 参数的回调接口。
+* `KeyHolder generatedKeyHolder`: 用于存储生成的键的对象，通常用于插入操作后获取自增主键。
+
+处理逻辑：
+
+1. **执行批量操作**：调用 `execute` 方法，传入 `PreparedStatementCreator` 和 `PreparedStatementCallback` 来执行批量操作。由 `BatchPreparedStatementSetter` 设置批次中的每个 `PreparedStatement` 参数。
+2. **返回结果**：结果是一个 `int[]` 数组，每个元素表示执行每批次更新操作所影响的行数。
+
+> TIP：该方法适用于需要获取生成键的批量插入操作。
+
+------
+
+`batchUpdate` 方法（带 SQL 和 `BatchPreparedStatementSetter`）：
+
+```java
+public int[] batchUpdate(String sql, final BatchPreparedStatementSetter pss) throws DataAccessException {
+    // 在调试模式下，记录 SQL 批量操作的执行情况。
+    if (this.logger.isDebugEnabled()) {
+        this.logger.debug("Executing SQL batch update [" + sql + "]");
+    }
+
+    // 通过 `BatchPreparedStatementSetter` 获取批次大小，如果批次大小为 0，则直接返回空的结果数组
+    int batchSize = pss.getBatchSize();
+    if (batchSize == 0) {
+        return new int[0];
+    } else {
+        // 调用 execute 方法，通过内部的 PreparedStatementCallback 进行批量操作。
+        int[] result = (int[])this.execute(sql, this.getPreparedStatementCallback(pss, (KeyHolder)null));
+        Assert.state(result != null, "No result array");
+        
+        // 返回受影响的行数数组，每个元素表示每批次执行的结果。
+        return result;
+    }
+}
+```
+
+参数含义：
+
+* `String sql`: 要执行的 SQL 语句。
+* `BatchPreparedStatementSetter pss`: 用于设置批量操作中每个 `PreparedStatement` 参数的回调接口。
+
+处理逻辑：
+
+1. **日志记录**：在调试模式下，记录 SQL 批量操作的执行情况。
+2. **检查批次大小**：通过 `BatchPreparedStatementSetter` 获取批次大小，如果批次大小为 0，则直接返回空的结果数组。
+3. **执行批量操作**：调用 `execute` 方法，通过内部的 `PreparedStatementCallback` 进行批量操作。
+4. **返回结果**：返回受影响的行数数组，每个元素表示每批次执行的结果。
+
+> TIP：该方法适用于简单的批量更新、删除操作，不涉及生成键的处理。
+
+------
+
+`batchUpdate` 方法（带 SQL 和参数列表）：
+
+```java
+public int[] batchUpdate(String sql, List<Object[]> batchArgs) throws DataAccessException {
+    return this.batchUpdate(sql, batchArgs, new int[0]);
+}
+```
+
+参数含义：
+
+* `String sql`: 要执行的 SQL 语句。
+* `List<Object[]> batchArgs`: 参数列表，每个 `Object[]` 表示一批操作的参数。
+
+处理逻辑：这是一个简化的 `batchUpdate` 方法，它调用了带有参数类型的 `batchUpdate` 方法，并传入空的 `int[]` 数组作为参数类型。
+
+> TIP：适用于简单的批量操作，不涉及参数类型控制。
+
+------
+
+`batchUpdate` 方法（带 SQL、参数列表和参数类型）：
+
+```java
+public int[] batchUpdate(String sql, final List<Object[]> batchArgs, final int[] argTypes) throws DataAccessException {
+    // 如果参数列表为空，则返回空的结果数组。
+    // 执行批量操作，并返回受影响的行数数组。
+    return batchArgs.isEmpty() ? new int[0] : this.batchUpdate(sql, new BatchPreparedStatementSetter() {
+        // 在 `BatchPreparedStatementSetter` 的 `setValues` 方法中，根据参数和对应的类型设置 `PreparedStatement` 的参数值
+        public void setValues(PreparedStatement ps, int i) throws SQLException {
+            Object[] values = (Object[])batchArgs.get(i);
+            int colIndex = 0;
+            Object[] var5 = values;
+            int var6 = values.length;
+
+            for(int var7 = 0; var7 < var6; ++var7) {
+                Object value = var5[var7];
+                ++colIndex;
+                
+                // 使用 `StatementCreatorUtils.setParameterValue` 方法处理不同类型的参数值
+                if (value instanceof SqlParameterValue paramValue) {
+                    StatementCreatorUtils.setParameterValue(ps, colIndex, paramValue, paramValue.getValue());
+                } else {
+                    int colType;
+                    if (argTypes.length < colIndex) {
+                        colType = Integer.MIN_VALUE;
+                    } else {
+                        colType = argTypes[colIndex - 1];
+                    }
+
+                    StatementCreatorUtils.setParameterValue(ps, colIndex, colType, value);
+                }
+            }
+
+        }
+
+        public int getBatchSize() {
+            return batchArgs.size();
+        }
+    });
+}
+```
+
+参数含义：
+
+* `String sql`: 要执行的 SQL 语句。
+
+* `List<Object[]> batchArgs`: 参数列表，每个 `Object[]` 表示一批操作的参数。
+
+* `int[] argTypes`: 参数类型数组，对应 `batchArgs` 中每个参数的 JDBC 类型。
+
+处理逻辑：
+
+1. **检查参数列表是否为空**：如果参数列表为空，则返回空的结果数组。
+
+2. **设置参数值**：
+
+   - 在 `BatchPreparedStatementSetter` 的 `setValues` 方法中，根据参数和对应的类型设置 `PreparedStatement` 的参数值。
+
+   - 使用 `StatementCreatorUtils.setParameterValue` 方法处理不同类型的参数值。
+
+3. **返回结果**：执行批量操作，并返回受影响的行数数组。
+
+> TIP：该方法适用于需要明确指定参数类型的批量操作场景。
+
+------
+
+`batchUpdate` 方法（带自定义参数设置和批次大小）：
+
+```java
+public <T> int[][] batchUpdate(String sql, final Collection<T> batchArgs, final int batchSize, final ParameterizedPreparedStatementSetter<T> pss) throws DataAccessException {
+    // 在调试模式下，记录 SQL 批量操作的执行情况和批次大小。
+    if (this.logger.isDebugEnabled()) {
+        this.logger.debug("Executing SQL batch update [" + sql + "] with a batch size of " + batchSize);
+    }
+
+    int[][] result = (int[][])this.execute(sql, (ps) -> {
+        ArrayList<int[]> rowsAffected = new ArrayList<>();
+        boolean var15 = false;
+
+        // 结果是一个二维 `int[][]` 数组，每个子数组表示一个批次的执行结果。
+        int[][] var19;
+        try {
+            var15 = true;
+            
+            // 通过 `JdbcUtils.supportsBatchUpdates` 检查数据库是否支持批量更新。
+            boolean batchSupported = JdbcUtils.supportsBatchUpdates(ps.getConnection());
+            int n = 0;
+            Iterator<T> var8 = batchArgs.iterator();
+
+            while(true) {
+                if (!var8.hasNext()) {
+                    int[][] result1 = new int[rowsAffected.size()][];
+
+                    for(int i = 0; i < result1.length; ++i) {
+                        result1[i] = rowsAffected.get(i);
+                    }
+
+                    var19 = result1;
+                    var15 = false;
+                    break;
+                }
+
+                T obj = var8.next();
+                
+                // 逐个设置 `PreparedStatement` 的参数。
+                pss.setValues(ps, obj);
+                ++n;
+                
+                // 如果数据库支持批量操作，则累积操作并按批次大小执行 `ps.executeBatch()`。
+                if (batchSupported) {
+                    ps.addBatch();
+                    if (n % batchSize == 0 || n == batchArgs.size()) {
+                        if (this.logger.isTraceEnabled()) {
+                            int batchIdx = n % batchSize == 0 ? n / batchSize : n / batchSize + 1;
+                            int items = n - (n % batchSize == 0 ? n / batchSize - 1 : n / batchSize) * batchSize;
+                            this.logger.trace("Sending SQL batch update #" + batchIdx + " with " + items + " items");
+                        }
+
+                        rowsAffected.add(ps.executeBatch());
+                    }
+                } else { // 如果不支持批量操作，则逐条执行 `ps.executeUpdate()`。
+                    int updateCount = ps.executeUpdate();
+                    rowsAffected.add(new int[]{updateCount});
+                }
+            }
+        } finally {
+            if (var15) {
+                if (pss instanceof ParameterDisposer parameterDisposer) {
+                    parameterDisposer.cleanupParameters();
+                }
+            }
+        }
+
+        if (pss instanceof ParameterDisposer parameterDisposerx) {
+            parameterDisposerx.cleanupParameters();
+        }
+
+        return var19;
+    });
+    Assert.state(result != null, "No result array");
+    return result;
+}
+```
+
+参数含义：
+
+- `String sql`：要执行的 SQL 语句。
+- `Collection<T> batchArgs`：批量操作的参数集合，每个元素表示一批操作的参数。
+- `int batchSize`：每次批量操作的大小。
+- `ParameterizedPreparedStatementSetter<T> pss`：用于设置 `PreparedStatement` 参数的回调接口。
+
+处理逻辑：
+
+1. **日志记录**：在调试模式下，记录 SQL 批量操作的执行情况和批次大小。
+2. **批量操作支持检查**：通过 `JdbcUtils.supportsBatchUpdates` 检查数据库是否支持批量更新。
+3. **执行批量操作**：
+   - 逐个设置 `PreparedStatement` 的参数。
+   - 如果数据库支持批量操作，则累积操作并按批次大小执行 `ps.executeBatch()`。
+   - 如果不支持批量操作，则逐条执行 `ps.executeUpdate()`。
+4. **返回结果**：结果是一个二维 `int[][]` 数组，每个子数组表示一个批次的执行结果。
+
+> TIP：该方法适用于自定义批次大小和参数设置的复杂批量操作场景。
+
+#### 批量插入（batchUpdate）
+
+以下示例展示了如何批量插入多个用户：
+
+```java
+public int[] batchAddUsers(List<User> users) {
+    String sql = "INSERT INTO users (name, email, age) VALUES (?, ?, ?)";
+    return jdbcTemplate.batchUpdate(sql, users, users.size(), (ps, user) -> {
+        ps.setString(1, user.getName());
+        ps.setString(2, user.getEmail());
+        ps.setInt(3, user.getAge());
+    });
+}
+```
+
+该方法返回一个 `int[]` 数组，每个元素代表对应批次的执行结果。
+
+#### 批量更新与删除（batchUpdate）
+
+批量更新和删除操作与批量插入类似，也使用 `batchUpdate` 方法来实现：
+
+```java
+public int[] batchUpdateUsers(List<User> users) {
+    String sql = "UPDATE users SET name = ?, email = ?, age = ? WHERE id = ?";
+    return jdbcTemplate.batchUpdate(sql, users, users.size(), (ps, user) -> {
+        ps.setString(1, user.getName());
+        ps.setString(2, user.getEmail());
+        ps.setInt(3, user.getAge());
+        ps.setLong(4, user.getId());
+    });
+}
+
+public int[] batchDeleteUsers(List<Long> ids) {
+    String sql = "DELETE FROM users WHERE id = ?";
+    return jdbcTemplate.batchUpdate(sql, ids, ids.size(), (ps, id) -> ps.setLong(1, id));
+}
+```
+
+这两个方法分别执行批量更新和删除操作，返回 `int[]` 数组，表示每个批次的执行结果。
+
+## JdbcTemplate 进阶用法
+
+### 使用 RowMapper 自定义结果映射
+
+`RowMapper` 是 `JdbcTemplate` 中用于将 `ResultSet` 的每一行映射为 Java 对象的接口。通过实现 `RowMapper` 接口，开发者可以根据需要自定义结果集的映射逻辑，从而将数据库查询结果转换为更适合应用逻辑的对象形式。
+
+#### 什么是 RowMapper
+
+`RowMapper` 接口位于 `org.springframework.jdbc.core` 包中，它只有一个方法：
+
+```java
+@FunctionalInterface
+public interface RowMapper<T> {
+    @Nullable
+    T mapRow(ResultSet rs, int rowNum) throws SQLException;
+}
+```
+
+参数说明：
+
+* `ResultSet rs`: 表示数据库返回的结果集。
+* `int rowNum`: 表示当前处理的是结果集的第几行（从 0 开始）。
+
+返回值：
+
+* 返回的是一个泛型类型 `T`，表示将 `ResultSet` 中的一行数据映射为的对象类型。
+
+通过实现这个接口，你可以在 `mapRow` 方法中定义如何将 `ResultSet` 的一行数据映射到你定义的对象中。
+
+#### 自定义 RowMapper
+
+还是之前的用户表 `users`，包含以下字段：`id`、`name`、`email`、`age`。我们需要将查询结果映射为一个 `User` 对象。
+
+```java
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@RequiredArgsConstructor
+public class User {
+
+    private Long id;
+    private String name;
+    private String email;
+    private Integer age;
+}
+```
+
+我们实现 `RowMapper` 接口，将 `ResultSet` 中的每一行数据映射为 `User` 对象：
+
+```java
+public class UserRowMapper implements RowMapper {
+
+    @Override
+    public Object mapRow(ResultSet rs, int rowNum) throws SQLException {
+        User user = new User();
+        user.setId(rs.getLong("id"));
+        user.setName(rs.getString("name"));
+        user.setEmail(rs.getString("email"));
+        user.setAge(rs.getInt("age"));
+        return user;
+    }
+}
+```
+
+#### 在 JdbcTemplate 中使用自定义 RowMapper
+
+一旦 `RowMapper` 实现完成，我们可以在 `JdbcTemplate` 中使用它来执行查询并映射结果。例如：
+
+```java
+public List<User> findAllUsers() {
+    String sql = "SELECT * FROM users";
+    return jdbcTemplate.query(sql, new UserRowMapper());
+}
+```
+
+在上面的代码中，`jdbcTemplate.query` 方法将执行给定的 SQL 查询，并使用 `UserRowMapper` 将结果集中的每一行数据映射为 `User` 对象，最终返回 `User` 对象的 `List`。
+
+#### 使用 Lambda 表达式简化 RowMapper
+
+如果映射逻辑非常简单，例如只是将数据库字段直接映射到对象的字段上，可以使用 Lambda 表达式简化 `RowMapper` 的实现：
+
+```java
+public List<User> findAllUsers() {
+    String sql = "SELECT * FROM users";
+    // return jdbcTemplate.query(sql, new UserRowMapper());
+    return jdbcTemplate.query(sql, (rs, rowNum) -> {
+        User user = new User();
+        user.setId(rs.getLong("id"));
+        user.setName(rs.getString("name"));
+        user.setEmail(rs.getString("email"));
+        user.setAge(rs.getInt("age"));
+        return user;
+    });
+}
+```
+
+这种写法更加简洁，但功能上与单独定义的 `UserRowMapper` 相同。它更适合于映射逻辑简单、不需要在多个地方复用的场景。
+
+#### 扩展 RowMapper 的功能
+
+在某些复杂场景下，可能需要扩展 `RowMapper` 的功能。例如，当结果集包含关联表的数据时，可以在 `RowMapper` 中处理这些关联关系，并将其映射为复杂对象。
+
+假设 `User` 对象中还有一个 `List<Order>` 字段，表示用户的订单列表，`Order` 是一个单独的类，代表订单信息。在 `UserRowMapper` 中，你可以添加额外的逻辑来查询并填充用户的订单信息：
+
+```java
+public class UserRowMapper implements RowMapper<User> {
+    @Override
+    public User mapRow(ResultSet rs, int rowNum) throws SQLException {
+        User user = new User();
+        user.setId(rs.getLong("id"));
+        user.setName(rs.getString("name"));
+        user.setEmail(rs.getString("email"));
+        user.setAge(rs.getInt("age"));
+        
+        // 获取用户的订单列表（假设订单数据已经加入到 ResultSet 中）
+        List<Order> orders = new ArrayList<>();
+        do {
+            Order order = new Order();
+            order.setOrderId(rs.getLong("order_id"));
+            order.setProduct(rs.getString("product"));
+            order.setPrice(rs.getBigDecimal("price"));
+            orders.add(order);
+        } while (rs.next() && rs.getLong("id") == user.getId()); // 关联逻辑，类似于 ON 条件
+        
+        user.setOrders(orders);
+        return user;
+    }
+}
+```
+
+这种处理方式可以将多个表的数据映射为复杂的对象结构，但要注意控制查询的效率和内存消耗。
+
+### 使用 ResultSetExtractor 处理复杂查询结果
+
+`ResultSetExtractor` 是 `JdbcTemplate` 提供的另一种用于处理查询结果的接口，与 `RowMapper` 不同的是，`ResultSetExtractor` 允许你处理整个 `ResultSet`，而不仅仅是逐行映射。这使得它特别适合处理复杂的查询结果，比如需要跨多行数据进行聚合或复杂转换的情况。
+
+#### 什么是 ResultSetExtractor
+
+`ResultSetExtractor` 是一个函数式接口，其定义如下：
+
+```java
+public interface ResultSetExtractor<T> {
+    @Nullable
+    T extractData(ResultSet rs) throws SQLException, DataAccessException;
+}
+```
+
+* 参数说明：`ResultSet rs`: 表示数据库返回的结果集，可能包含多行数据。
+
+* 返回值：返回值是泛型类型 `T`，可以是任何类型，通常是一个处理后的对象或对象集合。
+
+`ResultSetExtractor` 允许你一次性处理整个 `ResultSet`，这在需要处理复杂的、跨多行的数据时特别有用。
+
+#### 自定义 ResultSetExtractor
+
+假设我们需要查询用户及其订单信息，并将这些信息组织成一个包含用户和其订单列表的复杂对象。我们可以使用 `ResultSetExtractor` 实现这一需求。
+
+首先，假设我们有如下的 `User` 和 `Order` 类：
+
+```java
+public class User {
+    private Long id;
+    private String name;
+    private String email;
+    private Integer age;
+    private List<Order> orders;
+
+    // 构造方法、getter 和 setter 方法省略
+}
+
+public class Order {
+    private Long orderId;
+    private String product;
+    private BigDecimal price;
+
+    // 构造方法、getter 和 setter 方法省略
+}
+```
+
+然后，我们可以使用 `ResultSetExtractor` 将查询结果映射为一个 `User` 对象及其关联的 `Order` 列表：
+
+```java
+public class UserWithOrdersExtractor implements ResultSetExtractor {
+
+    @Override
+    public User extractData(ResultSet rs) throws SQLException, DataAccessException {
+        User user = null;
+        List<Order> orders = new ArrayList<>();
+
+        while (rs.next()) {
+            if (user == null) {
+                user = new User();
+                user.setId(rs.getLong("id"));
+                user.setName(rs.getString("name"));
+                user.setEmail(rs.getString("email"));
+                user.setAge(rs.getInt("age"));
+            }
+
+            Order order = new Order();
+            order.setOrderId(rs.getLong("order_id"));
+            order.setProduct(rs.getString("product"));
+            order.setPrice(rs.getBigDecimal("price"));
+            orders.add(order);
+        }
+
+        if (user != null) {
+            user.setOrders(orders);
+        }
+
+        return user;
+    }
+}
+```
+
+在这个实现中，我们使用 `while` 循环遍历 `ResultSet`，每次读取一行数据。在第一次循环时，我们初始化 `User` 对象，并在后续的每一行中将订单信息添加到用户的订单列表中。循环结束后，返回包含所有订单信息的用户对象。
+
+#### 使用匿名类或 Lambda 表达式简化 ResultSetExtractor
+
+如果你只需要一次性的使用 `ResultSetExtractor`，可以使用匿名类或 Lambda 表达式来简化代码。例如：
+
+```java
+public User findUserWithOrders(Long userId) {
+    String sql = "SELECT u.id, u.name, u.email, u.age, o.order_id, o.product, o.price " +
+            "FROM users u LEFT JOIN orders o ON u.id = o.user_id WHERE u.id = ?";
+
+    return  jdbcTemplate.query(sql, new Object[]{userId}, rs -> {
+        User user = null;
+        List<Order> orders = new ArrayList<>();
+
+        while (rs.next()) {
+            if (user == null) {
+                user = new User();
+                user.setId(rs.getLong("id"));
+                user.setName(rs.getString("name"));
+                user.setEmail(rs.getString("email"));
+                user.setAge(rs.getInt("age"));
+            }
+
+            Order order = new Order();
+            order.setOrderId(rs.getLong("order_id"));
+            order.setProduct(rs.getString("product"));
+            order.setPrice(rs.getBigDecimal("price"));
+            orders.add(order);
+        }
+
+        if (user != null) {
+            user.setOrders(orders);
+        }
+
+        return user;
+    });
+}
+```
+
+这种写法虽然简洁，但也仅适用于简单的场景。如果查询逻辑复杂，建议还是单独定义一个 `ResultSetExtractor` 类，以便代码结构更加清晰。
+
+#### ResultSetExtractor 的扩展
+
+`ResultSetExtractor` 还可以用来实现更复杂的数据聚合和处理逻辑。例如，你可以在 `ResultSetExtractor` 中处理多个子查询结果，将数据聚合成复杂的对象结构，或将多个查询结果组合成一个复合对象。这使得它在处理复杂业务逻辑时非常有用。
+
+举个例子，如果你需要将查询结果中的订单按日期进行分组，并计算每组订单的总金额，你可以在 `extractData` 方法中实现这些逻辑，并将结果返回为一个包含这些分组信息的对象。
+
+### 使用 PreparedStatementSetter 动态设置参数
+
+`PreparedStatementSetter` 是 `JdbcTemplate` 中用于动态设置 `PreparedStatement` 参数的接口。它允许开发者在执行 SQL 语句之前，通过编程的方式动态地为 SQL 语句的参数赋值。使用 `PreparedStatementSetter`，可以更灵活地处理不同的 SQL 参数设置场景，例如复杂的查询条件、批量操作等。
+
+#### 什么是 PreparedStatementSetter
+
+`PreparedStatementSetter` 接口位于 `org.springframework.jdbc.core` 包中，它只有一个方法：
+
+```java
+public interface PreparedStatementSetter {
+    void setValues(PreparedStatement ps) throws SQLException;
+}
+```
+
+参数说明：
+
+* `PreparedStatement ps`: 代表 JDBC 中的 `PreparedStatement` 对象，允许在 SQL 语句执行之前为其设置参数。
+
+`PreparedStatementSetter` 的核心功能就是在 SQL 执行之前，为 `PreparedStatement` 的参数占位符（即 `?`）赋值。这使得 SQL 语句在执行时能够替换掉占位符并传递实际的参数值。
+
+#### 使用 PreparedStatementSetter 的基本示例
+
+假设我们有一个 SQL 查询，需要根据用户输入的条件动态设置参数：
+
+```java
+public List<User> findUsersByCriteria(String name, Integer age) {
+    String sql = "SELECT id, name, email, age FROM users WHERE name = ? AND age = ?";
+
+    return jdbcTemplate.query(sql, new PreparedStatementSetter() {
+        @Override
+        public void setValues(PreparedStatement ps) throws SQLException {
+            ps.setString(1, name);
+            ps.setInt(2, age);
+        }
+    }, new UserRowMapper());
+}
+```
+
+在这个例子中，我们定义了一个匿名的 `PreparedStatementSetter` 实现，通过 `ps.setString` 和 `ps.setInt` 方法为 SQL 语句中的 `?` 占位符设置参数。然后，使用 `UserRowMapper` 来将查询结果映射为 `User` 对象列表。
+
+#### 使用 Lambda 表达式简化代码
+
+由于 `PreparedStatementSetter` 是一个函数式接口，可以用 Lambda 表达式来简化代码。上面的代码可以重写为：
+
+```java
+public List<User> findUsersByCriteria(String name, Integer age) {
+    String sql = "SELECT id, name, email, age FROM users WHERE name = ? AND age = ?";
+
+    return jdbcTemplate.query(sql, ps -> {
+        ps.setString(1, name);
+        ps.setInt(2, age);
+    }, new UserRowMapper());
+}
+```
+
+这种写法不仅简洁，而且在处理简单的参数设置场景时，更容易阅读和维护。
+
+#### 扩展 PreparedStatementSetter：处理复杂参数设置
+
+在实际应用中，你可能需要处理更复杂的参数设置逻辑，比如根据某些条件动态设置参数值，或者处理可选参数。下面是一个更复杂的示例：
+
+```java
+public List<User> findUsersByCriteria(String name, Integer age, String email) {
+    String sql = "SELECT id, name, email, age FROM users WHERE 1=1";
+
+    List<Object> params = new ArrayList<>();
+    StringBuilder query = new StringBuilder(sql);
+
+    if (name != null) {
+        query.append(" AND name = ?");
+        params.add(name);
+    }
+    if (age != null) {
+        query.append(" AND age = ?");
+        params.add(age);
+    }
+    if (email != null) {
+        query.append(" AND email = ?");
+        params.add(email);
+    }
+
+    return jdbcTemplate.query(query.toString(), ps -> {
+        for (int i = 0; i < params.size(); i++) {
+            ps.setObject(i + 1, params.get(i));
+        }
+    }, new UserRowMapper());
+}
+```
+
+在这个例子中，我们根据传入的参数条件动态构建了 SQL 查询，并将参数添加到一个列表 `params` 中。然后在 `PreparedStatementSetter` 中，我们遍历参数列表，并将参数依次设置到 `PreparedStatement` 中。这样可以处理不同的查询条件而无需重复编写 SQL 语句。
+
+#### 批量操作中的 PreparedStatementSetter
+
+`PreparedStatementSetter` 也常用于批量操作中，特别是配合 `BatchPreparedStatementSetter` 接口使用时。它允许你为每一个批次的 SQL 语句动态设置参数。
+
+```java
+public void batchUpdateUserEmails(List<User> users) {
+    String sql = "UPDATE users SET email = ? WHERE id = ?";
+
+    jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+        @Override
+        public void setValues(PreparedStatement ps, int i) throws SQLException {
+            User user = users.get(i);
+            ps.setString(1, user.getEmail());
+            ps.setLong(2, user.getId());
+        }
+
+        @Override
+        public int getBatchSize() {
+            return users.size();
+        }
+    });
+}
+```
+
+在这个示例中，我们使用 `BatchPreparedStatementSetter` 来处理批量更新操作，每个批次的参数都根据当前的用户对象动态设置。
+
+#### 与其他 JdbcTemplate 方法的结合
+
+`PreparedStatementSetter` 不仅用于 `query` 方法，还可以用于 `update` 和 `batchUpdate` 等方法。这使得它在动态参数设置的场景中非常通用。例如，下面是一个通过 `update` 方法执行插入操作的示例：
+
+```java
+public int insertUser(String name, String email, Integer age) {
+    String sql = "INSERT INTO users (name, email, age) VALUES (?, ?, ?)";
+    
+    return jdbcTemplate.update(sql, ps -> {
+        ps.setString(1, name);
+        ps.setString(2, email);
+        ps.setInt(3, age);
+    });
+}
+```
+
+### 使用 CallableStatementCallback 执行存储过程
+
+在企业级应用中，存储过程（Stored Procedures）被广泛用于封装复杂的数据库逻辑。`CallableStatementCallback` 是 `JdbcTemplate` 提供的一个接口，用于执行存储过程或数据库函数，并处理结果集或输出参数。通过 `CallableStatementCallback`，我们可以灵活地调用数据库中的存储过程，处理复杂的输入和输出参数。
+
+#### 什么是 CallableStatementCallback
+
+`CallableStatementCallback` 接口位于 `org.springframework.jdbc.core` 包中，它允许你通过回调的方式执行存储过程。接口定义如下：
+
+```java
+public interface CallableStatementCallback<T> {
+    @Nullable
+    T doInCallableStatement(CallableStatement cs) throws SQLException, DataAccessException;
+}
+```
+
+* **参数**：`CallableStatement cs`: 表示 `CallableStatement` 对象，用于执行数据库中的存储过程或函数。
+* **返回值**：泛型类型 `T`，表示执行存储过程后的结果，可以是单个对象、集合或任何复杂的类型。
+
+通过实现 `CallableStatementCallback`，你可以自定义存储过程的执行逻辑，并处理存储过程返回的结果或输出参数。
+
+#### 使用 CallableStatementCallback 调用简单存储过程
+
+假设我们在数据库中有一个简单的存储过程，用于获取用户的详细信息：
+
+```sql
+CREATE PROCEDURE GetUserDetails(IN userId BIGINT, OUT userName VARCHAR(100), OUT userEmail VARCHAR(100))
+BEGIN
+    SELECT name, email INTO userName, userEmail FROM users WHERE id = userId;
+END;
+```
+
+我们可以通过 `CallableStatementCallback` 调用这个存储过程，并处理输出参数：
+
+```java
+public Map<String, String> getUserDetails(Long userId) {
+    String sql = "{call GetUserDetails(?, ?, ?)}";
+
+    return jdbcTemplate.execute(sql, new CallableStatementCallback<Map<String, String>>() {
+        @Override
+        public Map<String, String> doInCallableStatement(CallableStatement cs) throws SQLException, DataAccessException {
+            // 存储过程入参
+            cs.setLong(1, userId);
+
+            // 存储过程出参
+            cs.registerOutParameter(2, Types.VARCHAR);
+            cs.registerOutParameter(3, Types.VARCHAR);
+
+            // 执行存储过程
+            cs.execute();
+
+            // 返回结果
+            Map<String, String> result = new HashMap<>();
+            result.put("userName", cs.getString(2));
+            result.put("userEmail", cs.getString(3));
+            return result;
+        }
+    });
+}
+```
+
+在这个例子中：
+
+* `cs.setLong(1, userId)` 设置输入参数 `userId`。
+* `cs.registerOutParameter(2, Types.VARCHAR)` 和 `cs.registerOutParameter(3, Types.VARCHAR)` 注册两个输出参数，用于接收存储过程的返回值。
+* `cs.execute()` 执行存储过程。
+* 然后我们将输出参数的结果存储到 `Map<String, String>` 中并返回。
+
+#### 处理复杂的输入和输出参数
+
+有时候，存储过程可能需要处理更复杂的输入和输出参数，比如多个输入参数，或返回一个结果集。我们可以在 `CallableStatementCallback` 中处理这些复杂情况。
+
+例如，假设我们有一个存储过程，它接收多个输入参数，并返回一个结果集：
+
+```sql
+CREATE PROCEDURE GetUserOrders(IN userId BIGINT)
+BEGIN
+    SELECT order_id, product, price FROM orders WHERE user_id = userId;
+END;
+```
+
+我们可以这样处理：
+
+```java
+public List<Order> getUserOrders(Long userId) {
+    String sql = "{call GetUserOrders(?)}";
+
+    return jdbcTemplate.execute(sql, new CallableStatementCallback<List<Order>>() {
+        @Override
+        public List<Order> doInCallableStatement(CallableStatement cs) throws SQLException, DataAccessException {
+            // 存储过程入参
+            cs.setLong(1, userId);
+
+            // 执行存储过程，记录是否有返回结果集
+            boolean hasResultSet = cs.execute();
+
+            List<Order> orders = new ArrayList<>();
+            if (hasResultSet) {
+                ResultSet rs = cs.getResultSet();
+                while (rs.next()) {
+                    Order order = new Order();
+                    order.setOrderId(rs.getLong("order_id"));
+                    order.setProduct(rs.getString("product"));
+                    order.setPrice(rs.getBigDecimal("price"));
+                    orders.add(order);
+                }
+            }
+
+            return orders;
+        }
+    });
+}
+```
+
+在这个示例中：
+
+- `cs.setLong(1, userId)` 设置输入参数。
+- `cs.execute()` 执行存储过程并检查是否有结果集返回。
+- 如果有结果集返回，我们遍历 `ResultSet` 并将每一行数据映射为 `Order` 对象，然后添加到 `orders` 列表中。
+
+#### 处理 OUT 和 INOUT 参数
+
+在存储过程中，`OUT` 参数和 `INOUT` 参数是比较常见的。`CallableStatementCallback` 提供了直接的方法来处理这些参数。
+
+例如，一个存储过程可能会使用 `INOUT` 参数来接收和返回值：
+
+```sql
+CREATE PROCEDURE UpdateUserAge(INOUT userAge INT)
+BEGIN
+    SET userAge = userAge + 1;
+END;
+```
+
+调用这个存储过程并处理 `INOUT` 参数的示例如下：
+
+```java
+public int updateUserAge(int age) {
+    String sql = "{call UpdateUserAge(?)}";
+
+    return jdbcTemplate.execute(sql, new CallableStatementCallback<Integer>() {
+        @Override
+        public Integer doInCallableStatement(CallableStatement cs) throws SQLException {
+            cs.setInt(1, age);
+            cs.registerOutParameter(1, Types.INTEGER);
+            cs.execute();
+            return cs.getInt(1);
+        }
+    });
+}
+```
+
+在这个示例中：
+
+- `cs.setInt(1, age)` 设置 `INOUT` 参数的初始值。
+- `cs.registerOutParameter(1, Types.INTEGER)` 注册输出参数。
+- 执行存储过程后，通过 `cs.getInt(1)` 获取更新后的参数值。
+
+### 事务管理与 JdbcTemplate
+
+在实际开发中，事务管理至关重要，特别是在涉及多个数据库操作时。Spring 提供了强大的事务管理机制，允许开发者在使用 `JdbcTemplate` 进行数据库操作时轻松管理事务。事务可以确保一组数据库操作要么全部成功，要么全部回滚，从而保持数据的一致性。
+
+在这一部分中，我们将探讨 `JdbcTemplate` 中的事务管理，内容包括事务的基本概念、在 `JdbcTemplate` 中配置事务、编程式事务与声明式事务的区别，以及事务的隔离级别与传播行为。
+
+#### 事务的基本概念
+
+**事务（Transaction）** 是一组逻辑上的操作单元，这些操作要么全部成功，要么全部失败回滚。
+
+事务具有四个基本特性，通常简称为 **ACID**：
+
+* **原子性（Atomicity）**：事务中的所有操作要么全部成功，要么全部失败。
+* **一致性（Consistency）**：事务完成后，数据库必须处于一致的状态。
+* **隔离性（Isolation）**：事务之间相互隔离，不能互相影响。
+* **持久性（Durability）**：事务一旦提交，其结果将被永久保存，即使系统发生故障也不会丢失。
+
+Spring 的事务管理框架允许开发者在应用程序中轻松管理这些特性，无论是通过编程式还是声明式的方式。
+
+#### 在 JdbcTemplate 中配置事务
+
+使用 `JdbcTemplate` 时，事务管理通常通过 Spring 提供的 `PlatformTransactionManager` 来完成。最常见的事务管理器是 `DataSourceTransactionManager`，用于管理基于 JDBC 的事务。
+
+在 Spring Boot 中，配置事务管理通常非常简单，因为它已经为你自动配置了 `DataSourceTransactionManager`。如果你需要手动配置，以下是一个简单的配置事务管理器示例：
+
+```java
+@Configuration
+@EnableTransactionManagement // 开启事务管理
+public class AppConfig {
+
+    @Bean
+    public DataSourceTransactionManager transactionManager(DataSource dataSource) {
+        return new DataSourceTransactionManager(dataSource);
+    }
+
+    @Bean
+    public JdbcTemplate jdbcTemplate(DataSource dataSource) {
+        return new JdbcTemplate(dataSource);
+    }
+}
+```
+
+**解释**：
+
+- `@EnableTransactionManagement`：启用 Spring 的注解驱动的事务管理功能。
+- `DataSourceTransactionManager`：Spring 提供的基于 JDBC 的事务管理器，它需要一个 `DataSource` 对象来管理事务的开始、提交和回滚。
+- `JdbcTemplate`：我们将 `DataSource` 注入到 `JdbcTemplate` 中，以便它能够使用同一个 `DataSource` 进行数据库操作。
+
+#### 编程式事务与声明式事务
+
+Spring 提供了两种方式来管理事务：编程式事务和声明式事务。
+
+编程式事务允许你通过代码显式地控制事务的开始、提交和回滚。使用编程式事务通常涉及 `TransactionTemplate` 或 `PlatformTransactionManager`，它们提供了编程方式来控制事务的边界。
+
+使用示例：
+
+```java
+@Service
+public class UserService {
+
+    private final JdbcTemplate jdbcTemplate;
+    private final PlatformTransactionManager transactionManager;
+
+    @Autowired
+    public UserService(JdbcTemplate jdbcTemplate, PlatformTransactionManager transactionManager) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.transactionManager = transactionManager;
+    }
+
+    public void createUser(String name, String email) {
+        // 创建事务
+        TransactionDefinition def = new DefaultTransactionDefinition();
+        // 获取事务状态
+        TransactionStatus status = transactionManager.getTransaction(def);
+
+        try {
+            jdbcTemplate.update("INSERT INTO users (name, email) VALUES (?, ?)", name, email);
+
+            // 其他数据库操作...
+
+            // 操作结束，提交事务
+            transactionManager.commit(status);
+        } catch (Exception e) {
+            // 回滚事务
+            transactionManager.rollback(status);
+            throw e;
+        }
+    }
+}
+```
+
+在这个示例中，我们使用 `@Transactional` 注解声明了 `createUser` 方法为一个事务方法。Spring 会自动管理事务的开始、提交和回滚。
+
+> TIP：编程式事务优点
+>
+> 1. **简洁**：代码更简洁，不需要手动控制事务边界。
+> 2. **集中管理**：事务管理逻辑集中在配置中，更容易维护。
+
+------
+
+声明式事务更为常见，它允许你使用注解（或 XML 配置）来声明事务的边界，而不需要在代码中显式控制事务。
+
+使用示例：
+
+```java
+@Service
+public class UserService {
+
+    private final JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    public UserService(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    @Transactional
+    public void createUser(String name, String email) {
+        jdbcTemplate.update("INSERT INTO users (name, email) VALUES (?, ?)", name, email);
+        // 其他数据库操作...
+    }
+}
+```
+
+在这个示例中，我们使用 `@Transactional` 注解声明了 `createUser` 方法为一个事务方法。Spring 会自动管理事务的开始、提交和回滚。
+
+> TIP：声明式事务优点
+>
+> 1. **简洁**：代码更简洁，不需要手动控制事务边界。
+> 2. **集中管理**：事务管理逻辑集中在配置中，更容易维护。
+
+#### 事务隔离级别与传播行为
+
+在 Spring 事务管理中，事务的隔离级别和传播行为是两个非常重要的概念，它们直接影响到事务的执行方式和事务间的相互影响。
+
+隔离级别决定了一个事务与另一个事务的隔离程度。Spring 提供了以下5个隔离级别：
+
+* **DEFAULT**：使用数据库默认的隔离级别。
+* **READ_UNCOMMITTED**：允许读取未提交的数据（可能导致脏读）。
+* **READ_COMMITTED**：只能读取已提交的数据（避免脏读）。
+* **REPEATABLE_READ**：在事务期间多次读取相同数据，结果一致（避免不可重复读）。
+* **SERIALIZABLE**：最高的隔离级别，完全隔离（避免幻读，但性能较差）。
+
+使用示例：（MySQL 默认可重复读）
+
+```java
+@Transactional(isolation = Isolation.REPEATABLE_READ)
+public void createUser(String name, String email) {
+    jdbcTemplate.update("INSERT INTO users (name, email) VALUES (?, ?)", name, email);
+}
+```
+
+在这个示例中，`@Transactional` 注解指定了 `REPEATABLE_READ` 隔离级别，确保事务在读取数据时的稳定性。
+
+------
+
+传播行为定义了当一个事务方法被另一个事务方法调用时，事务应该如何进行。
+
+Spring 支持的传播行为有如下7个：
+
+* **REQUIRED**（默认）：如果当前存在事务，则加入该事务；如果没有，则新建一个事务。
+* **REQUIRES_NEW**：总是新建一个事务。如果当前存在事务，则挂起当前事务。
+* **SUPPORTS**：如果当前存在事务，则加入该事务；如果没有事务，则以非事务方式运行。
+* **NOT_SUPPORTED**：总是以非事务方式运行，如果当前存在事务，则挂起当前事务。
+* **MANDATORY**：必须在一个事务中运行，如果当前没有事务，则抛出异常。
+* **NEVER**：总是以非事务方式运行，如果当前存在事务，则抛出异常。
+* **NESTED**：如果当前存在事务，则在当前事务中嵌套一个子事务。
+
+使用示例：
+
+```java
+@Transactional(propagation = Propagation.REQUIRES_NEW)
+public void createUser(String name, String email) {
+    jdbcTemplate.update("INSERT INTO users (name, email) VALUES (?, ?)", name, email);
+}
+```
+
+在这个示例中，`@Transactional` 注解指定了 `REQUIRES_NEW` 传播行为，即每次调用 `createUser` 方法时，都会新建一个事务，而不依赖于外部事务。
+
+## NamedParameterJdbcTemplate 详解
+
+### NamedParameterJdbcTemplate 简介与注入方式
+
+`NamedParameterJdbcTemplate` 是 `JdbcTemplate` 的一个扩展类，主要提供了对**命名参数**的支持。在使用 `JdbcTemplate` 时，SQL 语句中的参数通常通过位置标识符 `?` 来表示，这种方式在处理复杂 SQL 时可能会导致代码难以维护。而 `NamedParameterJdbcTemplate` 通过使用命名参数，使得 SQL 语句更加直观和易于管理。
+
+`NamedParameterJdbcTemplate` 的核心特点是支持命名参数，即你可以在 SQL 语句中使用具有名称的参数，而不是使用位置占位符 `?`。这使得代码更具可读性，尤其在处理多个参数时尤为有用。
+
+命名参数的优势：
+
+* **可读性**：参数名称使 SQL 语句更加清晰易懂，避免了位置占位符的混淆。
+* **灵活性**：可以通过 `Map` 或 `SqlParameterSource` 的实现来动态构建参数，这使得处理动态 SQL 变得更加简单。
+* **简化代码**：在复杂查询中避免了参数位置错乱的风险，减少了出错的可能性。
+
+与 `JdbcTemplate` 类似，`NamedParameterJdbcTemplate` 也依赖于 `DataSource` 来管理数据库连接。通常情况下，我们可以通过配置类将 `NamedParameterJdbcTemplate` 注入到服务类中。
+
+如果你已经有一个配置好的 `JdbcTemplate`，可以直接通过构造器注入 `JdbcTemplate` 来创建 `NamedParameterJdbcTemplate`：
+
+```java
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public NamedParameterJdbcTemplate namedParameterJdbcTemplate(JdbcTemplate jdbcTemplate) {
+        return new NamedParameterJdbcTemplate(jdbcTemplate);
+    }
+
+    @Bean
+    public JdbcTemplate jdbcTemplate(DataSource dataSource) {
+        return new JdbcTemplate(dataSource);
+    }
+}
+```
+
+在这个配置类中，我们首先定义了一个 `JdbcTemplate` Bean，它依赖于 `DataSource`。然后，我们使用这个 `JdbcTemplate` 创建了一个 `NamedParameterJdbcTemplate`，并将其作为一个独立的 Bean 注入到 Spring 容器中。
+
+也可以直接通过 `DataSource` 创建 `NamedParameterJdbcTemplate`，这种方式不依赖现有的 `JdbcTemplate`：
+
+```java
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public NamedParameterJdbcTemplate namedParameterJdbcTemplate(DataSource dataSource) {
+        return new NamedParameterJdbcTemplate(dataSource);
+    }
+}
+```
+
+在这个配置类中，我们直接通过 `DataSource` 创建了 `NamedParameterJdbcTemplate`，这种方式避免了对 `JdbcTemplate` 的依赖，简化了配置。
+
+在实际项目中，你可以将 `NamedParameterJdbcTemplate` 注入到你的服务类中，并开始使用命名参数执行数据库操作。
+
+以下是一个简单的使用示例：
+
+```java
+@Service
+public class UserService {
+
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
+    @Autowired
+    public UserService(NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
+        this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
+    }
+
+    public User findUserById(Long id) {
+        String sql = "SELECT id, name, email, age FROM users WHERE id = :id";
+        Map<String, Object> params = new HashMap<>();
+        params.put("id", id);
+
+        return namedParameterJdbcTemplate.queryForObject(sql, params, new BeanPropertyRowMapper<>(User.class));
+    }
+}
+```
+
+在这个示例中，我们使用 `NamedParameterJdbcTemplate` 进行查询操作，SQL 语句中的 `:id` 是一个命名参数，通过 `Map<String, Object>` 提供实际的参数值。`queryForObject` 方法用于执行查询，并返回单个 `User` 对象。
+
+### 使用命名参数进行查询
+
+`NamedParameterJdbcTemplate` 通过支持命名参数，使得 SQL 查询操作更加直观和易于管理。我们继续探讨如何使用 `NamedParameterJdbcTemplate` 执行查询操作，包括查询单条记录、多条记录，以及结合 `BeanPropertySqlParameterSource` 和 `MapSqlParameterSource` 进行查询。
+
+#### 查询单条记录
+
+使用 `NamedParameterJdbcTemplate` 查询单条记录时，可以通过 `queryForObject` 方法实现。这个方法类似于 `JdbcTemplate` 中的 `queryForObject`，但它使用命名参数，使得代码更加可读。
+
+我们希望根据用户的 `id` 查询单个用户的信息。可以使用如下代码实现：
+
+```java
+public User findUserById(Long id) {
+    String sql = "SELECT id, name, email, age FROM users WHERE id = :id";
+    
+    Map<String, Object> params = new HashMap<>();
+    params.put("id", id);
+
+    return namedParameterJdbcTemplate.queryForObject(sql, params, new BeanPropertyRowMapper<>(User.class));
+}
+```
+
+解释：
+
+* `sql` 语句中的 `:id` 是命名参数。
+* `params` 是一个 `Map`，用于将参数名称与实际值进行绑定。
+* `queryForObject` 方法用于执行查询，并将结果映射为 `User` 对象。`BeanPropertyRowMapper` 会自动将数据库中的列映射到 `User` 类的属性上。
+
+在实际使用中，查询可能不会返回任何结果，此时 `queryForObject` 方法会抛出 `EmptyResultDataAccessException`。可以通过捕获该异常并返回 `null` 来处理这种情况：
+
+```java
+public User findUserById(Long id) {
+    String sql = "SELECT id, name, email, age FROM users WHERE id = :id";
+    
+    Map<String, Object> params = new HashMap<>();
+    params.put("id", id);
+
+    try {
+        return namedParameterJdbcTemplate.queryForObject(sql, params, new BeanPropertyRowMapper<>(User.class));
+    } catch (EmptyResultDataAccessException e) {
+        return null;
+    }
+}
+```
+
+当查询结果为空时，捕获 `EmptyResultDataAccessException` 并返回 `null`，以避免程序崩溃。
+
+#### 使用 BeanPropertySqlParameterSource
+
+除了使用 `Map` 作为参数容器外，还可以使用 `BeanPropertySqlParameterSource`，它允许你直接将对象的属性作为 SQL 参数绑定。这种方式在对象属性较多时非常有用。
+
+我们可以使用 `BeanPropertySqlParameterSource` 来简化参数绑定：
+
+```java
+public User findUserById(Long id) {
+    String sql = "SELECT id, name, email, age FROM users WHERE id = :id";
+    
+    User user = new User();
+    user.setId(id);
+    
+    SqlParameterSource namedParameters = new BeanPropertySqlParameterSource(user);
+
+    return namedParameterJdbcTemplate.queryForObject(sql, namedParameters, new BeanPropertyRowMapper<>(User.class));
+}
+```
+
+`BeanPropertySqlParameterSource` 自动将 `User` 对象中的属性绑定到 SQL 语句中的命名参数上。这种方式减少了手动创建参数 `Map` 的步骤，代码更为简洁。
+
+#### 查询多条记录
+
+当查询的结果可能包含多条记录时，`NamedParameterJdbcTemplate` 提供了 `query` 方法，可以返回一个包含所有结果的 `List`。每个结果可以映射为一个对象。
+
+假设我们希望查询所有年龄大于某个值的用户，可以使用如下代码：
+
+```java
+public List<User> findUsersByAge(int age) {
+    String sql = "SELECT id, name, email, age FROM users WHERE age > :age";
+    
+    Map<String, Object> params = new HashMap<>();
+    params.put("age", age);
+
+    return namedParameterJdbcTemplate.query(sql, params, new BeanPropertyRowMapper<>(User.class));
+}
+```
+
+**解释**：
+
+- `sql` 语句中的 `:age` 是命名参数。
+- `params` 是一个 `Map`，用于将参数名称与实际值进行绑定。
+- `query` 方法执行查询，并返回一个包含所有 `User` 对象的 `List`。
+
+#### 使用 MapSqlParameterSource
+
+`MapSqlParameterSource` 是另一个常用的 `SqlParameterSource` 实现，它允许你使用链式调用来添加参数，代码更加简洁：
+
+```java
+public List<User> findUsersByAge(int age) {
+    String sql = "SELECT id, name, email, age FROM users WHERE age > :age";
+    
+    SqlParameterSource namedParameters = new MapSqlParameterSource("age", age);
+
+    return namedParameterJdbcTemplate.query(sql, namedParameters, new BeanPropertyRowMapper<>(User.class));
+}
+```
+
+`MapSqlParameterSource` 提供了更加简洁的参数设置方式，适合参数较少的情况。
+
+#### 动态 SQL 查询
+
+在实际开发中，查询条件经常是动态的。你可以使用 `NamedParameterJdbcTemplate` 来构建动态 SQL 查询。
+
+假设我们需要根据多个条件动态查询用户列表：
+
+```java
+public List<User> findUsersByCriteria(String name, Integer age) {
+    String sql = "SELECT id, name, email, age FROM users WHERE 1=1";
+    
+    MapSqlParameterSource params = new MapSqlParameterSource();
+    
+    if (name != null) {
+        sql += " AND name = :name";
+        params.addValue("name", name);
+    }
+    if (age != null) {
+        sql += " AND age = :age";
+        params.addValue("age", age);
+    }
+
+    return namedParameterJdbcTemplate.query(sql, params, new BeanPropertyRowMapper<>(User.class));
+}
+```
+
+**解释**：
+
+- `sql` 语句使用了动态拼接的方式，根据传入的参数添加不同的条件。
+- `MapSqlParameterSource` 提供了动态添加参数的方法，使得代码更具灵活性。
+
+### 数据库更新与删除
+
+`NamedParameterJdbcTemplate` 不仅可以用来执行查询操作，还可以用于执行更新和删除操作。通过命名参数的支持，更新和删除操作的代码变得更加简洁和易于维护。
+
+#### 使用命名参数进行更新
+
+`NamedParameterJdbcTemplate` 提供了 `update` 方法，用于执行 `INSERT`、`UPDATE` 和 `DELETE` 等 DML（数据操作语言）语句。这个方法支持使用命名参数来绑定 SQL 语句中的参数，使得代码更加清晰。
+
+假设我们需要更新用户的电子邮件地址，可以使用如下代码：
+
+```java
+public int updateUserEmail(Long userId, String newEmail) {
+    String sql = "UPDATE users SET email = :email WHERE id = :id";
+    
+    Map<String, Object> params = new HashMap<>();
+    params.put("email", newEmail);
+    params.put("id", userId);
+
+    return namedParameterJdbcTemplate.update(sql, params);
+}
+```
+
+**解释**：
+
+- `sql` 语句中的 `:email` 和 `:id` 是命名参数。
+- `params` 是一个 `Map`，用于将参数名称与实际值进行绑定。
+- `update` 方法执行更新操作，并返回受影响的行数。
+
+如果你需要更新多个字段，`BeanPropertySqlParameterSource` 可以简化代码，将对象属性直接绑定到 SQL 参数中。
+
+假设我们需要更新用户的名称和电子邮件地址，可以使用如下代码：
+
+```java
+public int updateUserDetails(User user) {
+    String sql = "UPDATE users SET name = :name, email = :email WHERE id = :id";
+    
+    SqlParameterSource namedParameters = new BeanPropertySqlParameterSource(user);
+
+    return namedParameterJdbcTemplate.update(sql, namedParameters);
+}
+```
+
+**解释**：
+
+- `BeanPropertySqlParameterSource` 自动将 `User` 对象中的属性绑定到 SQL 语句中的命名参数上。
+- `update` 方法执行更新操作，并返回受影响的行数。
+
+在实际开发中，你可能需要根据条件动态更新字段。可以结合 `MapSqlParameterSource` 来实现动态更新。
+
+假设我们需要动态更新用户的名称和电子邮件地址，可以使用如下代码：
+
+```java
+public int updateUserDetailsDynamically(Long userId, String name, String email) {
+    String sql = "UPDATE users SET ";
+    MapSqlParameterSource params = new MapSqlParameterSource("id", userId);
+    
+    if (name != null) {
+        sql += "name = :name, ";
+        params.addValue("name", name);
+    }
+    if (email != null) {
+        sql += "email = :email, ";
+        params.addValue("email", email);
+    }
+
+    // 移除最后的逗号和空格
+    sql = sql.substring(0, sql.length() - 2);
+    sql += " WHERE id = :id";
+    
+    return namedParameterJdbcTemplate.update(sql, params);
+}
+```
+
+**解释**：
+
+- 动态拼接 SQL 语句，根据传入的参数决定哪些字段需要更新。
+- 使用 `MapSqlParameterSource` 动态添加参数，避免了冗余代码。
+
+#### 使用命名参数进行删除
+
+`NamedParameterJdbcTemplate` 的 `update` 方法同样适用于删除操作。通过命名参数，可以更灵活地控制删除的条件。
+
+假设我们需要根据用户的 ID 删除用户记录，可以使用如下代码：
+
+```java
+public int deleteUserById(Long userId) {
+    String sql = "DELETE FROM users WHERE id = :id";
+    
+    Map<String, Object> params = new HashMap<>();
+    params.put("id", userId);
+
+    return namedParameterJdbcTemplate.update(sql, params);
+}
+```
+
+**解释**：
+
+- `sql` 语句中的 `:id` 是命名参数。
+- `params` 是一个 `Map`，用于将参数名称与实际值进行绑定。
+- `update` 方法执行删除操作，并返回受影响的行数。
+
+有时删除操作可能会涉及多个条件，可以使用 `MapSqlParameterSource` 来处理这些条件。假设我们需要根据用户的年龄和电子邮件删除用户记录，可以使用如下代码：
+
+```java
+public int deleteUsersByAgeAndEmail(int age, String email) {
+    String sql = "DELETE FROM users WHERE age = :age AND email = :email";
+    
+    MapSqlParameterSource params = new MapSqlParameterSource();
+    params.addValue("age", age);
+    params.addValue("email", email);
+
+    return namedParameterJdbcTemplate.update(sql, params);
+}
+```
+
+**解释**：
+
+- `sql` 语句中使用了多个命名参数 `:age` 和 `:email`。
+- 使用 `MapSqlParameterSource` 来绑定多个参数，并传递给 `update` 方法进行删除操作。
+
+在处理大批量数据更新或删除时，`NamedParameterJdbcTemplate` 的 `batchUpdate` 方法可以显著提高性能。这个方法支持批量处理，并且可以结合命名参数使用。
+
+假设我们需要批量更新用户的电子邮件地址，可以使用如下代码：
+
+```java
+public int[] batchUpdateEmails(List<User> users) {
+    String sql = "UPDATE users SET email = :email WHERE id = :id";
+    
+    SqlParameterSource[] batchParams = SqlParameterSourceUtils.createBatch(users.toArray());
+    
+    return namedParameterJdbcTemplate.batchUpdate(sql, batchParams);
+}
+```
+
+**解释**：
+
+- `SqlParameterSourceUtils.createBatch` 可以将用户列表转换为 `SqlParameterSource` 数组，每个元素表示一批次操作的参数。
+- `batchUpdate` 方法执行批量更新操作，返回一个 `int[]`，每个元素表示对应批次受影响的行数。
+
+同样的，你也可以使用 `batchUpdate` 方法来批量删除用户：
+
+```java
+public int[] batchDeleteUsers(List<Long> userIds) {
+    String sql = "DELETE FROM users WHERE id = :id";
+    
+    SqlParameterSource[] batchParams = SqlParameterSourceUtils.createBatch(userIds.toArray());
+    
+    return namedParameterJdbcTemplate.batchUpdate(sql, batchParams);
+}
+```
+
+将用户 ID 列表转换为 `SqlParameterSource` 数组，然后使用 `batchUpdate` 方法批量执行删除操作。
+
+### 批量操作与命名参数
+
+`NamedParameterJdbcTemplate` 提供了强大的批量操作支持，允许你使用命名参数进行大批量的数据插入、更新和删除操作。通过批量操作，你可以显著提高性能，尤其是在处理大量数据时。
+
+#### 批量插入
+
+在批量插入操作中，`NamedParameterJdbcTemplate` 的 `batchUpdate` 方法允许你一次性插入多条记录，而不需要为每条记录单独执行插入操作。这样可以减少数据库的交互次数，从而提高插入效率。
+
+假设我们有一个 `User` 类，并需要批量插入多个用户记录到 `users` 表中：
+
+```java
+public int[] batchInsertUsers(List<User> users) {
+    String sql = "INSERT INTO users (id, name, email, age) VALUES (:id, :name, :email, :age)";
+    
+    SqlParameterSource[] batchParams = SqlParameterSourceUtils.createBatch(users.toArray());
+    
+    return namedParameterJdbcTemplate.batchUpdate(sql, batchParams);
+}
+```
+
+**解释**：
+
+- `sql` 语句定义了插入操作的结构，并使用命名参数 `:id`、`:name`、`:email` 和 `:age`。
+- `SqlParameterSourceUtils.createBatch(users.toArray())` 将用户列表转换为 `SqlParameterSource` 数组，每个数组元素表示一条记录的插入参数。
+- `batchUpdate` 方法执行批量插入操作，返回一个 `int[]` 数组，表示每批次操作受影响的行数。
+
+如果你需要对每条记录的插入参数进行额外的处理，可以使用 `MapSqlParameterSource` 来构建批量插入参数：
+
+```java
+public int[] batchInsertUsersWithMap(List<User> users) {
+    String sql = "INSERT INTO users (id, name, email, age) VALUES (:id, :name, :email, :age)";
+    
+    SqlParameterSource[] batchParams = users.stream()
+        .map(user -> new MapSqlParameterSource()
+            .addValue("id", user.getId())
+            .addValue("name", user.getName())
+            .addValue("email", user.getEmail())
+            .addValue("age", user.getAge()))
+        .toArray(SqlParameterSource[]::new);
+    
+    return namedParameterJdbcTemplate.batchUpdate(sql, batchParams);
+}
+```
+
+使用 `MapSqlParameterSource` 可以灵活地为每条记录设置参数。这种方法允许你在构建参数时进行额外的处理，如转换或校验。
+
+#### 批量更新与删除
+
+与批量插入类似，`NamedParameterJdbcTemplate` 的 `batchUpdate` 方法也支持批量更新和删除操作。
+
+假设我们需要批量更新用户的电子邮件地址，可以使用如下代码：
+
+```java
+public int[] batchUpdateUserEmails(List<User> users) {
+    String sql = "UPDATE users SET email = :email WHERE id = :id";
+    
+    SqlParameterSource[] batchParams = SqlParameterSourceUtils.createBatch(users.toArray());
+    
+    return namedParameterJdbcTemplate.batchUpdate(sql, batchParams);
+}
+```
+
+**解释**：
+
+- `sql` 语句用于定义更新操作，其中使用命名参数 `:email` 和 `:id`。
+- `SqlParameterSourceUtils.createBatch` 将用户列表转换为批量参数数组。
+- `batchUpdate` 方法执行批量更新操作，返回每个更新操作的受影响行数。
+
+如果更新操作需要处理复杂的逻辑，可以使用 `MapSqlParameterSource` 来动态构建更新参数：
+
+```java
+public int[] batchUpdateUserDetails(List<User> users) {
+    String sql = "UPDATE users SET name = :name, email = :email, age = :age WHERE id = :id";
+    
+    SqlParameterSource[] batchParams = users.stream()
+        .map(user -> new MapSqlParameterSource()
+            .addValue("id", user.getId())
+            .addValue("name", user.getName())
+            .addValue("email", user.getEmail())
+            .addValue("age", user.getAge()))
+        .toArray(SqlParameterSource[]::new);
+    
+    return namedParameterJdbcTemplate.batchUpdate(sql, batchParams);
+}
+```
+
+同样的，`batchUpdate` 方法也可以用于批量删除操作。假设我们需要根据用户的 ID 批量删除用户记录，可以使用如下代码：
+
+```java
+public int[] batchDeleteUsers(List<Long> userIds) {
+    String sql = "DELETE FROM users WHERE id = :id";
+    
+    SqlParameterSource[] batchParams = userIds.stream()
+        .map(id -> new MapSqlParameterSource("id", id))
+        .toArray(SqlParameterSource[]::new);
+    
+    return namedParameterJdbcTemplate.batchUpdate(sql, batchParams);
+}
+```
+
+> TIP：批量操作的注意事项
+>
+> 1. **性能提升**：批量操作可以显著减少数据库的交互次数，从而提升性能。但批量操作的大小应根据实际情况调整，避免一次性处理过多数据导致内存不足或数据库压力过大。
+> 2. **事务控制**：批量操作通常在事务中执行，确保操作要么全部成功，要么全部回滚。在批量操作中，若某一批次失败，事务回滚后不会保留之前的成功操作结果。
+> 3. **异常处理**：对于批量操作，建议添加适当的异常处理逻辑，确保在出现异常时，能够有效地回滚事务并记录相关错误信息。
+
+### 使用 NamedParameterJdbcTemplate 执行复杂 SQL
+
+在实际应用中，SQL 查询往往不仅仅是简单的 CRUD 操作，可能需要根据不同的业务逻辑构建动态 SQL，或者执行复杂的查询。`NamedParameterJdbcTemplate` 提供了灵活的工具来处理这些场景，使得代码更加清晰易懂，并且更易于维护。
+
+#### 动态 SQL 的构建
+
+动态 SQL 是指在运行时根据不同的条件构建 SQL 查询。这在处理复杂的查询条件时尤其有用。`NamedParameterJdbcTemplate` 可以结合 `MapSqlParameterSource` 或 `BeanPropertySqlParameterSource` 来动态地构建 SQL 查询，并绑定参数。
+
+假设我们有一个需求，需要根据用户的名称和年龄来查询用户列表，如果某个条件为空，则不使用该条件进行过滤。可以使用如下代码：
+
+```java
+public List<User> findUsersByDynamicCriteria(String name, Integer age) {
+    StringBuilder sql = new StringBuilder("SELECT id, name, email, age FROM users WHERE 1=1");
+    MapSqlParameterSource params = new MapSqlParameterSource();
+    
+    if (name != null) {
+        sql.append(" AND name = :name");
+        params.addValue("name", name);
+    }
+    
+    if (age != null) {
+        sql.append(" AND age = :age");
+        params.addValue("age", age);
+    }
+    
+    return namedParameterJdbcTemplate.query(sql.toString(), params, new BeanPropertyRowMapper<>(User.class));
+}
+```
+
+**解释**：
+
+- `StringBuilder` 用于构建动态 SQL 查询，根据条件拼接不同的 WHERE 子句。
+- `MapSqlParameterSource` 动态添加参数值，确保只有在条件不为空时才会添加相应的 SQL 语句和参数。
+- `query` 方法最终执行查询，并返回结果列表。
+
+对于更加复杂的业务逻辑，可能需要构建包含多个 JOIN、GROUP BY 或 ORDER BY 子句的动态 SQL 查询。以下是一个示例，展示了如何根据多个条件构建复杂的 SQL 查询：
+
+```java
+public List<User> findUsersWithOrders(String name, Integer minAge, Integer maxAge, String orderBy) {
+    StringBuilder sql = new StringBuilder("SELECT u.id, u.name, u.email, u.age, COUNT(o.id) as order_count FROM users u ");
+    sql.append("LEFT JOIN orders o ON u.id = o.user_id WHERE 1=1 ");
+    
+    MapSqlParameterSource params = new MapSqlParameterSource();
+    
+    if (name != null) {
+        sql.append(" AND u.name = :name");
+        params.addValue("name", name);
+    }
+    
+    if (minAge != null) {
+        sql.append(" AND u.age >= :minAge");
+        params.addValue("minAge", minAge);
+    }
+    
+    if (maxAge != null) {
+        sql.append(" AND u.age <= :maxAge");
+        params.addValue("maxAge", maxAge);
+    }
+    
+    sql.append(" GROUP BY u.id, u.name, u.email, u.age");
+    
+    if (orderBy != null) {
+        sql.append(" ORDER BY ").append(orderBy);
+    }
+    
+    return namedParameterJdbcTemplate.query(sql.toString(), params, new BeanPropertyRowMapper<>(User.class));
+}
+```
+
+**解释**：
+
+- 这个示例展示了如何在动态 SQL 中使用 `JOIN`、`GROUP BY` 和 `ORDER BY` 子句。
+- `MapSqlParameterSource` 用于安全地绑定参数，避免 SQL 注入的风险。
+
+在实际应用中，使用 `IN` 子句进行批量查询是很常见的需求。`NamedParameterJdbcTemplate` 提供了灵活的方式来处理这种场景。
+
+```java
+public List<User> findUsersByIds(List<Long> ids) {
+    String sql = "SELECT id, name, email, age FROM users WHERE id IN (:ids)";
+    
+    MapSqlParameterSource params = new MapSqlParameterSource("ids", ids);
+    
+    return namedParameterJdbcTemplate.query(sql, params, new BeanPropertyRowMapper<>(User.class));
+}
+```
+
+`:ids` 命名参数通过 `MapSqlParameterSource` 绑定到 `List<Long>` 参数中。`NamedParameterJdbcTemplate` 会自动将列表参数转换为适当的 SQL 格式，生成类似 `IN (1, 2, 3)` 的 SQL 语句。
+
+#### 复杂查询的处理与优化
+
+在处理复杂查询时，除了动态 SQL，还需要考虑查询性能的优化。`NamedParameterJdbcTemplate` 提供了一些功能来帮助你优化查询操作。
+
+**分页查询**在处理大量数据时非常有用，它可以减少每次查询返回的数据量，从而提高性能。以下是一个分页查询的示例：
+
+```java
+public List<User> findUsersWithPagination(int pageNumber, int pageSize) {
+    String sql = "SELECT id, name, email, age FROM users LIMIT :offset, :limit";
+    
+    int offset = (pageNumber - 1) * pageSize;
+    MapSqlParameterSource params = new MapSqlParameterSource();
+    params.addValue("offset", offset);
+    params.addValue("limit", pageSize);
+    
+    return namedParameterJdbcTemplate.query(sql, params, new BeanPropertyRowMapper<>(User.class));
+}
+```
+
+**解释**：
+
+- 使用 `LIMIT` 子句结合 `OFFSET` 参数实现分页查询。
+- `MapSqlParameterSource` 用于安全地绑定分页参数。
+
+有时，你可能需要在一个查询中嵌套另一个查询（子查询），或者需要在一个查询中联合多个表的数据。`NamedParameterJdbcTemplate` 可以帮助你处理这些复杂的查询场景。
+
+```java
+public List<UserOrderSummary> findUserOrderSummaries() {
+    String sql = "SELECT u.id, u.name, u.email, (SELECT COUNT(*) FROM orders o WHERE o.user_id = u.id) as order_count " +
+                 "FROM users u";
+    
+    return namedParameterJdbcTemplate.query(sql, new MapSqlParameterSource(), (rs, rowNum) -> {
+        UserOrderSummary summary = new UserOrderSummary();
+        summary.setUserId(rs.getLong("id"));
+        summary.setUserName(rs.getString("name"));
+        summary.setUserEmail(rs.getString("email"));
+        summary.setOrderCount(rs.getInt("order_count"));
+        return summary;
+    });
+}
+```
+
+在这个示例中，我们使用子查询来计算每个用户的订单数量，并将结果映射到自定义的 `UserOrderSummary` 对象中。
+
+在构建复杂 SQL 查询时，除了使用 `NamedParameterJdbcTemplate` 进行参数绑定和动态构建外，还应注意以下几点以优化性能：
+
+* **索引优化**：确保查询条件涉及的列上有适当的索引，以提高查询性能。
+* **避免全表扫描**：通过 WHERE 子句限制查询的结果集，避免全表扫描。
+* **减少嵌套查询**：尽量减少嵌套查询的使用，尤其是在数据量较大的情况下，嵌套查询可能会显著降低性能。
+* **批量操作**：使用批量操作代替逐条操作，减少数据库的交互次数。
+
+## 总结
+
+### JdbcTemplate vs NamedParameterJdbcTemplate
+
+JdbcTemplate：
+
+| 优点                                                         | 缺点                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| **简化 JDBC 编程**：`JdbcTemplate` 大大简化了传统的 JDBC 编程，消除了诸如资源管理、异常处理等繁琐的代码。 | **代码维护性较差**：由于 SQL 语句和业务逻辑紧密耦合，随着业务复杂度的增加，代码的维护性会有所降低。 |
+| **性能优秀**：相比于其他数据访问技术（如 JPA），`JdbcTemplate` 更加轻量级，通常能提供更好的性能，尤其是在不需要复杂 ORM 功能的场景中。 | **缺乏灵活性**：对于复杂的对象映射和关联查询，`JdbcTemplate` 可能显得力不从心，需要手动处理映射逻辑。 |
+| **强大的批量操作支持**：`JdbcTemplate` 提供了强大的批量操作功能，适用于处理大数据量的插入、更新和删除。 |                                                              |
+
+NamedParameterJdbcTemplate：
+
+| 优点                                                         | 缺点                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| **支持命名参数**：相比 `JdbcTemplate`，`NamedParameterJdbcTemplate` 支持使用命名参数，SQL 语句更加直观，参数绑定更为灵活，尤其适合复杂的 SQL 查询。 | **性能略低**：在大多数情况下，`NamedParameterJdbcTemplate` 的性能略低于 `JdbcTemplate`，这是因为额外的参数解析和绑定过程。 |
+| **更好的可读性**：由于支持命名参数，代码的可读性和可维护性有所提升，特别是在有大量参数的场景中。 | **复杂性增加**：对于简单的 SQL 操作，`NamedParameterJdbcTemplate` 引入的额外复杂性可能并不划算。 |
+
+### 使用建议
+
+使用 `JdbcTemplate` 和 `NamedParameterJdbcTemplate` 时，有一些最佳实践可以帮助提高代码的质量和系统的性能。
+
+1. **分层架构与单一职责原则**：
+   * **分层架构**：在数据访问层中，建议采用分层架构，将数据访问逻辑与业务逻辑分开。通过 DAO 层（数据访问对象）封装数据访问操作，可以提高代码的复用性和维护性。
+   * **单一职责原则**：每个类或方法只负责一个明确的功能，避免类或方法承担过多职责。这有助于代码的清晰性和易维护性。
+2. **使用事务管理确保数据一致性**：
+   * **声明式事务管理**：优先使用声明式事务管理，通过 `@Transactional` 注解简化事务管理，确保多个数据库操作在同一事务中执行。
+   * **事务传播与隔离级别**：根据业务需求合理设置事务的传播行为和隔离级别，避免脏读、不可重复读和幻读等问题。
+3.  **SQL 优化与索引使用**：
+   * **SQL 优化**：定期审查和优化 SQL 语句，避免全表扫描，尽量使用索引覆盖查询。复杂查询可以拆分为多个简单查询，或使用数据库视图、存储过程等方式进行优化。
+   * **索引使用**：确保在常用的查询条件字段上创建合适的索引，尤其是在高并发和大数据量场景中。定期检查并优化索引，避免不必要的性能开销。
+4. **合理使用批量操作**：
+   * **批量操作**：对于大数据量的插入、更新和删除操作，优先考虑使用 `batchUpdate` 方法进行批量处理，减少数据库交互次数，提升性能。
+   * **批次大小调优**：根据实际情况调整批次大小，避免一次性处理过多数据导致内存不足或数据库压力过大。
+5. **使用缓存机制**：
+   * **缓存**：对于频繁访问但变化不频繁的数据，使用缓存机制来减少数据库查询次数。Spring 提供了便捷的缓存支持，可以结合 `@Cacheable` 注解来实现。
+
+## 常见问题
+
+### 常见错误与异常处理
+
+在使用 `JdbcTemplate` 和 `NamedParameterJdbcTemplate` 进行开发时，常见的错误和异常主要集中在 SQL 语法错误、数据绑定异常和数据库连接问题上。
+
+#### SQL 语法错误
+
+**问题描述**：SQL 语法错误通常发生在拼写错误、缺少关键字或不正确的 SQL 结构时。
+
+**解决方法**：
+
+- **日志记录**：启用 SQL 日志记录功能，检查生成的 SQL 语句是否正确。可以通过配置 `logging.level.org.springframework.jdbc.core.JdbcTemplate=DEBUG` 在日志中输出 SQL 语句。
+- **数据库工具检查**：在数据库管理工具中执行生成的 SQL 语句，验证语法的正确性。
+
+#### 数据绑定异常
+
+**问题描述**：数据绑定异常通常发生在传递给 SQL 语句的参数类型不匹配时，例如传递 `null` 值给非空字段。
+
+**解决方法**：
+
+- **类型检查**：确保传递给 SQL 语句的参数类型与数据库表中对应字段的类型匹配。
+- **空值处理**：在需要传递 `null` 值的场景中，确保数据库表字段允许空值，并使用 `MapSqlParameterSource.addValue(String paramName, Object value, int sqlType)` 指定正确的 SQL 类型。
+
+#### 数据库连接问题
+
+**问题描述**：数据库连接问题通常与数据库配置、连接池设置或网络问题相关，常见的错误包括连接超时、连接池耗尽等。
+
+**解决方法**：
+
+- **连接池配置检查**：确保数据库连接池配置合理，包括连接池大小、超时时间等参数。
+- **数据库状态检查**：检查数据库是否正常运行，并确保网络连接稳定。
+
+### 性能问题的排查与解决
+
+在实际应用中，性能问题可能来自多个方面，包括数据库查询效率、连接池配置、批量操作等。
+
+#### 数据库慢查询分析
+
+**问题描述**：性能问题通常首先出现在数据库查询上，特别是复杂查询和大数据量查询。
+
+**解决方法**：
+
+- **慢查询日志**：启用数据库的慢查询日志功能，分析和优化执行时间较长的 SQL 语句。
+- **索引优化**：检查慢查询中涉及的字段，确保有合适的索引。避免全表扫描，必要时重建索引。
+
+#### 连接池配置调优
+
+**问题描述**：不合理的连接池配置可能导致连接池耗尽或响应速度缓慢。
+
+**解决方法**：
+
+- **监控连接池**：使用监控工具检查连接池的使用情况，调整 `maximum-pool-size` 和 `minimum-idle` 参数，确保连接池能够应对高并发请求。
+- **优化连接复用**：避免频繁地创建和关闭数据库连接，尽量复用已有连接。
+
+#### 批量操作调优
+
+**问题描述**：批量操作在处理大数据量时可能会因为批次大小不当或事务处理问题导致性能下降。
+
+**解决方法**：
+
+- **调整批次大小**：根据具体情况调整批次大小，避免一次性处理过多数据导致内存不足或数据库压力过大。
+- **优化事务处理**：确保批量操作在合理的事务范围内执行，避免因事务过大而导致锁定问题。
+
+### 如何选择 JdbcTemplate 与其他数据访问技术（如JPA）
+
+选择合适的数据访问技术至关重要。`JdbcTemplate` 和 JPA（Java Persistence API）是两种常见的数据访问技术，它们各有优缺点，适用于不同的应用场景。
+
+#### JdbcTemplate 的适用场景
+
+优势回顾：
+
+* **性能优越**：`JdbcTemplate` 是轻量级的数据访问工具，不引入复杂的 ORM 机制，性能通常优于 JPA，尤其是在数据量较大或要求响应时间较短的场景中。
+* **灵活性高**：`JdbcTemplate` 直接操作 SQL 语句，开发者可以完全控制 SQL 的执行过程，适合对 SQL 语句有特殊需求的场景。
+* **低内存开销**：相比于 JPA 的实体管理机制，`JdbcTemplate` 在内存开销上更为轻量，适合资源受限的环境。
+
+适用场景：
+
+* 需要直接控制 SQL 语句，避免 ORM 框架带来的性能开销。
+* 简单 CRUD 操作较多，不需要复杂的对象关系映射。
+* 应用程序性能要求较高，特别是对数据库操作的响应时间有严格要求。
+
+#### JPA 的适用场景
+
+优势回顾：
+
+* **简化开发**：JPA 提供了基于对象的持久化操作，自动管理实体对象的状态，开发者可以专注于业务逻辑而不是 SQL 语句。
+* **复杂关系映射**：JPA 支持复杂的对象关系映射，自动管理一对一、一对多、多对多的关系，适合数据模型复杂的应用。
+* **事务支持**：JPA 内置了事务管理，结合 Spring 的声明式事务，可以更加轻松地管理事务。
+
+适用场景：
+
+* 业务逻辑复杂，涉及大量的对象关系映射和关联查询。
+* 应用程序开发周期较短，需要通过自动化工具减少开发工作量。
+* 对性能要求相对宽松，愿意接受 ORM 带来的性能开销。
+
+#### 如何选择
+
+* **业务复杂度**：如果应用程序需要处理复杂的对象关系映射，并且对开发效率要求较高，JPA 是更好的选择。如果应用程序的业务逻辑相对简单，并且对性能有严格要求，`JdbcTemplate` 更加合适。
+* **团队经验**：如果开发团队对 SQL 和数据库操作非常熟悉，可以选择 `JdbcTemplate`。如果团队更熟悉对象模型和 Java EE 标准，JPA 可能是更自然的选择。
+* **性能要求**：在性能要求特别高的场景中，如大数据量处理、高并发请求等，`JdbcTemplate` 通常能够提供更好的性能。
+* **灵活性**：在需要灵活定制 SQL 语句和数据库操作的场景中，`JdbcTemplate` 更能满足需求。JPA 在这方面可能会受到 ORM 机制的限制。
+
