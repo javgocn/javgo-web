@@ -20,6 +20,12 @@ pnpm i
 pnpm dev
 ```
 
+每次编写完 MD 格式的文章后，在项目根目录下执行如下命令即可将 .md 文件转为 .mdx 文件，且自动替换 MD 的超链接语法和图片语法为系统优化后的样式：
+
+```bash
+node .\replace-mdx.js
+```
+
 ## License
 
 This project is licensed under the MIT License.
