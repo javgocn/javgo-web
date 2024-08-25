@@ -1,0 +1,623 @@
+import PostImg from 'components/PostImg';
+
+# 基础 - 项目搭建
+
+> TIP：这里我们以在线教育平台微服务架构为例作为后续演示的基础。
+
+## 微服务拆分
+
+在线教育平台通常会涉及到多个模块，以下是可以拆分的主要服务：
+
+* **用户服务**：负责用户的注册、登录、个人资料管理以及权限管理。
+* **课程服务**：负责课程的创建、管理、发布、以及课程内容的组织。
+* **订单服务**：处理课程的购买、订单管理、退款等相关功能。
+* **支付服务**：集成第三方支付接口，处理用户的支付请求。
+* **通知服务**：管理系统通知、邮件、短信等消息推送功能。
+* **学习服务**：负责用户的学习进度管理、打卡、作业提交等。
+* **评价服务**：用户对课程的评价与评分功能。
+* **内容服务**：负责课程视频、资料等内容的存储与分发。
+* **推荐服务**：基于用户行为和兴趣的课程推荐功能。
+
+## 系统架构
+
+项目命名为：**EduTech Platform**，下面是项目的模块划分：
+
+* **服务网关（edu-gateway）**：作为系统的流量入口，处理外部请求，进行路由、负载均衡、鉴权等功能。
+* **服务 API（edu-api）**：定义平台各个微服务的通用接口和配置，包括 DTO、接口定义等。
+* **服务通用项目（edu-common）**：存放通用工具类、配置、异常处理等各个微服务共享的部分，减少代码冗余。
+* **用户服务（edu-user）**：处理用户注册、登录、资料管理等用户相关业务逻辑。
+* **课程服务（edu-course）**：管理课程的创建、发布、更新及删除等操作。
+* **订单服务（edu-order）**：处理课程购买、订单生成、支付接口的调用与结果回调。
+* **支付服务（edu-payment）**：处理支付相关逻辑，集成多种支付方式。
+* **通知服务（edu-notification）**：负责系统的消息通知，支持邮件、短信、站内信等多种方式。
+* **学习服务（edu-learning）**：管理用户的学习进度、打卡记录、作业提交等学习相关功能。
+* **评价服务（edu-review）**：提供用户对课程的评价和评分功能，帮助提升课程质量。
+* **内容服务（edu-content）**：管理课程视频、文档等教学资源的上传、存储与分发。
+* **推荐服务（edu-recommendation）**：基于用户行为与兴趣，进行个性化课程推荐。
+
+## 架构介绍
+
+1. **服务网关（edu-gateway）** 服务网关是外部系统访问平台的唯一入口。它负责请求的路由、负载均衡、安全鉴权等功能，屏蔽了内部微服务的复杂性，提供统一的接口给前端应用（Web端、移动端）调用。
+2. **服务 API（edu-api）** 服务 API 模块定义了平台各个服务的公共接口和配置，包括数据传输对象（DTO）、接口定义等。这一层的抽象可以减少各个服务之间的耦合度，同时也便于统一管理和维护。
+3. **服务通用项目（edu-common）** 该模块包含各个服务可能需要的通用工具类、全局配置、异常处理和日志记录等。通过将这些通用功能提取出来，减少重复代码，提高代码复用性。
+4. **各业务微服务** 每个业务微服务（如用户服务、课程服务等）独立部署，彼此之间通过 API 进行通信。各服务专注于自己的业务领域，确保了系统的松耦合和易扩展性。
+5. **通知服务（edu-notification）** 通知服务负责系统的所有消息推送功能。无论是注册成功的通知，还是课程更新的消息，都由这个服务统一管理，并支持多种推送方式（如邮件、短信、站内信）。
+6. **推荐服务（edu-recommendation）** 推荐服务是一个独立的微服务，负责基于用户的行为数据（如学习进度、已购课程等）进行个性化推荐。通过机器学习算法，动态调整推荐内容，提升用户的学习体验。
+
+## 系统架构图
+
+架构图可以从用户发起请求开始，到各个微服务处理请求、返回结果的流程进行描述。可以简要设计为：
+
+* 用户 -> 服务网关 -> 各业务微服务 -> 数据库
+* 通知服务与各业务微服务交互，处理通知逻辑
+* 推荐服务在用户行为分析的基础上提供个性化课程推荐
+
+## 项目搭建
+
+### 创建父项目（EduTech Platform）
+
+#### 快速生成项目
+
+可以通过以下两种方式快速生成 Spring Cloud 项目：
+
+Spring Initializr：
+
+https://start.spring.io/
+
+阿里云脚手架：
+
+https://start.aliyun.com/
+
+这里我们以阿里云脚手架为例，在生成项目时，选择合适的 Spring Boot 版本和依赖项，例如 Spring Web、Spring Cloud Dependencies、Spring Cloud Alibaba Dependencies 等。
+
+> 本次选用的系统版本：
+>
+> * Spring Cloud 2023.0.1
+> * Spring Cloud Alibaba 2023.0.1
+> * Spring Boot 3.2.4
+> * JDK 17
+>
+> 如果阿里云脚手架没有 Spring Boot 3.2.4 可以先随意选择一个，后面在 pom.xml 文件中手动修改即可。
+
+基本配置如下：
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825171222041.png"/>
+
+点击底部的【浏览代码】可以大致查看预生成的项目结构：
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825171350373.png"/>
+
+确认无误后，即可点击【获取代码】，这里有两种获取方式，分别为【下载源码包】和【Git Clone 命令】，根据个人喜好选择即可：
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825170527250.png"/>
+
+这里以【Git Clone 命令】为例，在你想要存放的代码目录下执行上面的命令进行拉取即可，当然也可以直接使用 IDEA 的【Get from VCS】功能进行快速克隆。然后使用 IDEA 打开此项目即可：
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825171527722.png"/>
+
+进行基础的项目配置，如 Maven：
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825171647371.png"/>
+
+检查 JDK 版本是否正确：
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825171725615.png"/>
+
+生成后的父项目（`edutech-platform`）的 POM 文件可以配置如下：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>cn.javgo</groupId>
+    <artifactId>edutech-platform</artifactId>
+    <version>${project.version}</version>
+
+    <packaging>pom</packaging>
+    <name>edutech-platform</name>
+    <description>EduTech Platform - Online Education System</description>
+
+    <properties>
+        <project.version>1.0.0-SNAPSHOT</project.version>
+        <java.version>17</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!-- Dependency versions -->
+        <spring-boot.version>3.2.4</spring-boot.version>
+        <spring-cloud-dependencies.version>2023.0.1</spring-cloud-dependencies.version>
+        <spring-cloud-alibaba-dependencies.version>2023.0.1.0</spring-cloud-alibaba-dependencies.version>
+        <fastjson.version>1.2.75</fastjson.version>
+        <commons-lang3.version>3.12.0</commons-lang3.version>
+        <commons-io.version>2.11.0</commons-io.version>
+        <commons-collections4.version>4.4</commons-collections4.version>
+
+        <!-- Plugin versions -->
+        <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>spring</id>
+            <url>https://maven.aliyun.com/repository/spring</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Spring Cloud -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud-dependencies.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Spring Cloud Alibaba -->
+            <dependency>
+                <groupId>com.alibaba.cloud</groupId>
+                <artifactId>spring-cloud-alibaba-dependencies</artifactId>
+                <version>${spring-cloud-alibaba-dependencies.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Spring Boot Dependencies -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Fastjson -->
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>fastjson</artifactId>
+                <version>${fastjson.version}</version>
+            </dependency>
+
+            <!-- Apache Commons：提供 Lang 相关的实用工具方法 -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons-lang3.version}</version>
+            </dependency>
+            <!-- Apache Commons：供文件和输入输出流相关的实用工具方法 -->
+            <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>${commons-io.version}</version>
+            </dependency>
+            <!-- Apache Commons：提供集合相关的实用工具方法 -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-collections4</artifactId>
+                <version>${commons-collections4.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven-compiler-plugin.version}</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
+```
+
+> TIP：这里我们并没有引入 Spring Boot 打包插件 spring-boot-maven-plugin，需要运行部署的微服务进行手动引入即可。
+
+父项目只负责版本管理，可以删除无关的目录（如 src），最终得到的结构如下：
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825172817241.png"/>
+
+#### 依赖说明
+
+* **Spring Boot 基础依赖**：包括各种 Java 后端技术栈，如 Web、Data JPA、Security 等。
+* **Spring Cloud 相关依赖**：如 Netflix、OpenFeign、Gateway 等。
+* **Spring Cloud Alibaba 相关依赖**：如 Nacos、Sentinel、RocketMQ 等。
+* 除此之外还添加了一些项目开发中常用的类库。
+
+### 创建微服务通用项目（edu-common）
+
+在父项目 `edutech-platform` 上添加一个模块 `edu-common`，用于管理微服务项目中的公共配置、工具类等。
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825172840583.png"/>
+
+填写通用模块的基本信息：
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825173036342.png"/>
+
+修改对应的 pom.xml 如下：
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    
+    <parent>
+        <groupId>cn.javgo</groupId>
+        <artifactId>edutech-platform</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>edu-common</artifactId>
+    <packaging>jar</packaging>
+
+    <name>edu-common</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
+    </dependencies>
+</project>
+```
+
+这个项目主要包含系统通用的工具类、全局异常处理器、配置类等。
+
+### 创建微服务 API 项目（edu-api）
+
+同样的思路创建 edu-api 模块，定义各微服务的公共接口和数据传输对象（DTO）。
+
+修改对应的 pom.xml 如下：
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>cn.javgo</groupId>
+        <artifactId>edutech-platform</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>edu-api</artifactId>
+    <packaging>jar</packaging>
+
+    <name>edu-api</name>
+
+    <dependencies>
+        <!-- Service common -->
+        <dependency>
+            <groupId>cn.javgo</groupId>
+            <artifactId>edu-common</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Web -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Actuator -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+    </dependencies>
+</project>
+```
+
+对应的 edu-common 需要在父项目的 pom.xml 中进行统一维护：
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825180355324.png"/>
+
+依赖说明：
+
+* **edu-common**：依赖于通用工具模块 `edu-common`，包含了所有服务的共享配置和工具类。
+* **spring-boot-starter-web**：用于创建 RESTful API。
+* **spring-boot-starter-actuator**：用于监控和管理应用程序。
+
+### 创建业务微服务项目
+
+按照以下服务创建对应的模块：
+
+* **edu-user**：用户管理服务
+* **edu-course**：课程管理服务
+* **edu-order**：订单服务
+* **edu-payment**：支付服务
+* **edu-notification**：通知服务
+* **edu-learning**：学习服务
+* **edu-review**：评价服务
+* **edu-content**：内容管理服务
+* **edu-recommendation**：推荐服务
+
+以下以  `edu-user`  服务为例，其他服务按照相同步骤创建。在 `edu-user` 模块中配置 POM 文件，并添加 `edu-api` 的依赖：
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>cn.javgo</groupId>
+        <artifactId>edutech-platform</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>edu-user</artifactId>
+    <packaging>jar</packaging>
+
+    <name>edu-user</name>
+
+    <dependencies>
+        <!-- Service api -->
+        <dependency>
+            <groupId>cn.javgo</groupId>
+            <artifactId>edu-api</artifactId>
+        </dependency>
+    </dependencies>
+</project>
+```
+
+为每个服务在 application.yml 配置独立的端口和服务名称，例如：
+
+```yaml
+server:
+  port: 8010
+
+spring:
+  application:
+    name: edu-user
+```
+
+其他服务可以按照以下建议配置：
+
+| 服务               | 端口 |
+| ------------------ | ---- |
+| edu-user           | 8010 |
+| edu-course         | 8020 |
+| edu-order          | 8030 |
+| edu-payment        | 8040 |
+| edu-notification   | 8050 |
+| edu-learning       | 8060 |
+| edu-review         | 8070 |
+| edu-content        | 8080 |
+| edu-recommendation | 8090 |
+
+最终得到的项目结构如下：
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825182417021.png"/>
+
+## 多环境配置
+
+在微服务开发中，针对不同的环境（如开发、测试、生产等）进行配置是非常重要的。每个环境的配置需求不同，且参数值也会有所不同。因此，需要对不同环境进行区分配置，并在项目中实现自动切换和管理。
+
+在不同的环境中运行微服务时，常常需要使用不同的配置。例如，开发环境使用的数据库可能与生产环境不同，测试环境可能会有特殊的配置需求。因此，需要在项目中区分这些环境，并为每个环境定义专属的配置文件，以避免配置冲突和重复劳动。
+
+在父项目（`edutech-platform`）的 `pom.xml` 文件中添加各个环境的 Maven 配置。通过配置 `profiles`，可以为不同环境设置专属的属性。
+
+```xml
+<profiles>
+    <!-- 开发环境 -->
+    <profile>
+        <id>dev</id>
+        <activation>
+            <!-- 默认激活 -->
+            <activeByDefault>true</activeByDefault>
+        </activation>
+        <properties>
+            <env>dev</env>
+        </properties>
+    </profile>
+    <!-- 测试环境 -->
+    <profile>
+        <id>test</id>
+        <properties>
+            <env>test</env>
+        </properties>
+    </profile>
+    <!-- 生产环境 -->
+    <profile>
+        <id>prod</id>
+        <properties>
+            <env>prod</env>
+        </properties>
+    </profile>
+</profiles>
+```
+
+在这个配置中，默认激活的是开发环境（`dev`），其他环境可以通过指定 `-P` 参数来激活。
+
+根据 Spring Boot 的 Profiles 机制，在 `edu-api` 项目的 `src/main/resources` 目录下创建以下三个不同环境的配置文件：
+
+* `application-dev.yml`（开发环境）
+* `application-test.yml`（测试环境）
+* `application-prod.yml`（生产环境）
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825184113935.png"/>
+
+> TIP：演示需要，下面的多环境配置文件我都写成了一样的，在实际开发中需要根据实际情况调整。
+
+示例：application-dev.yml
+
+```yaml
+server:
+  port: 8010
+
+spring:
+  application:
+    name: edu-user
+  datasource:
+    url: jdbc:mysql://localhost:3306/db_edutech
+    username: root
+    password: root
+```
+
+示例：application-test.yml
+
+```yaml
+server:
+  port: 8010
+
+spring:
+  application:
+    name: edu-user
+  datasource:
+    url: jdbc:mysql://localhost:3306/db_edutech
+    username: root
+    password: root
+```
+
+示例：application-prod.yml
+
+```yaml
+server:
+  port: 8010
+
+spring:
+  application:
+    name: edu-user
+  datasource:
+    url: jdbc:mysql://localhost:3306/db_edutech
+    username: root
+    password: root
+```
+
+在每个微服务项目中，通过设置 `spring.profiles.active` 属性来激活当前环境。例如，在 `edu-user` 服务的 application.yml 中设置：
+
+```yaml
+spring:
+  profiles:
+    active: dev
+```
+
+如此一来，用户微服务早的配置就会包含 `application-dev.yml` 中的所有配置了。
+
+在打包时可以通过 `-P` 参数指定环境，如打包生产环境包时：
+
+```bash
+mvn clean package -P prod
+```
+
+在 IDEA 中运行应用时，我们也可以通过 UI 界面方便的指定环境：
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825184852509.png"/>
+
+## 配置过滤
+
+为了避免配置重复和硬编码，可以通过 Maven 的**资源过滤**功能来实现**配置文件的动态替换**。
+
+在父项目 `pom.xml` 文件中添加 Maven 资源插件配置：
+
+```xml
+<build>
+    <plugins>
+        ...
+
+        <!-- 资源过滤 -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-resources-plugin</artifactId>
+            <configuration>
+                <!-- 表示是否使用默认的定界符，这里设置为true -->
+                <useDefaultDelimiters>true</useDefaultDelimiters>
+                <!-- 定义定界符列表 -->
+                <delimiters>
+                    <!-- 定义一个自定义的定界符，用于替换资源文件中的属性值 -->
+                    <delimiter>$[*]</delimiter>
+                </delimiters>
+                <!-- 指定字符编码为UTF-8 -->
+                <encoding>UTF-8</encoding>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+```
+
+这个插件配置会在构建过程中自动替换各个微服务 application.yml 配置文件中的占位符。
+
+在 `edu-common` 项目的 `src/main/filters` 目录下创建过滤文件，用于不同环境下的配置值替换：
+
+* `application-filter-dev.properties`（开发环境）
+
+* `application-filter-test.properties`（测试环境）
+
+* `application-filter-prod.properties`（生产环境）
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825185556160.png"/>
+
+示例：application-filter-dev.properties
+
+```properties
+# 服务端口配置
+edu-user.port=8010
+edu-course.port=8020
+edu-order.port=8030
+edu-payment.port=8040
+edu-notification.port=8050
+edu-learning.port=8060
+edu-review.port=8070
+edu-content.port=8080
+edu-recommendation.port=8090
+
+# 服务名称
+edu-user.name=edu-user
+edu-course.name=edu-course
+edu-order.name=edu-order
+edu-payment.name=edu-payment
+edu-notification.name=edu-notification
+edu-learning.name=edu-learning
+edu-review.name=edu-review
+edu-content.name=edu-content
+edu-recommendation.name=edu-recommendation
+```
+
+然后在各个微服务项目的 `pom.xml` 文件中，添加过滤配置：
+
+```xml
+<build>
+    <!-- 配置过滤 -->
+    <filters>
+        <filter>../edu-common/src/main/filters/application-filter-${env}.properties</filter>
+    </filters>
+
+    <resources>
+        <resource>
+            <directory>src/main/resources</directory>
+            <filtering>true</filtering>
+        </resource>
+    </resources>
+</build>
+```
+
+此配置指定了过滤文件的路径和过滤机制，Maven 在构建时会根据激活的环境替换配置文件中的占位符。
+
+最后，在各个微服务的配置文件中使用占位符即可，例如在用户服务的 `application.yml` 中：
+
+```yaml
+server:
+  port: ${edu-user.port}
+
+spring:
+  application:
+    name: ${edu-user.name}
+  profiles:
+    active: dev
+```
+
+当你使用 Maven 进行构建时，例如 `mvn clean package -P dev`，Maven 会自动用 `application-filter-dev.properties` 中的值替换占位符 。
+
+> 注意：
+>
+> * **启动方式**：由于配置文件中使用了 Maven 资源插件的占位符，不能直接使用 `main` 方法启动项目。必须使用 `spring-boot:run` 命令或通过 `mvn package` 打包后再启动，否则占位符不会被替换，导致配置不正确。
+> * **开发工具支持**：在 IDEA 等开发工具中，可以通过设置 `Maven` 配置或 `spring.profiles.active` 来切换不同的环境。
+
+为此，你需要手动配置各个微服务的启动配置：
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825191503798.png"/>
+
+以用户服务为例：
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825191731552.png"/>
+
+通过以上步骤，我们搭建了一个基于 Spring Cloud Alibaba 的在线教育平台微服务架构。这个架构不仅涵盖了常见的微服务模式，还考虑了实际应用场景中的需求。每个服务模块都是独立的，易于维护和扩展。
+
+
+
