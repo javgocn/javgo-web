@@ -182,7 +182,7 @@ export default function ProjectPage() {
       },
       {
         title: 'paicoding',
-        description: '一个基于 Spring Boot、MyBatis-Plus、MySQL.mdx、Redis、ElasticSearch、MongoDB、Docker、RabbitMQ 等技术栈实现的社区系统。',
+        description: '一个基于 Spring-Framework Boot、MyBatis-Plus、MySQL.mdx、Redis、ElasticSearch、MongoDB、Docker、RabbitMQ 等技术栈实现的社区系统。',
         href: 'https://github.com/itwanger/paicoding',
         image: 'https://javgo-images.oss-cn-beijing.aliyuncs.com/2024-06-30-060948.png'
       },
