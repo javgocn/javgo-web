@@ -1,0 +1,170 @@
+import PostImg from 'components/PostImg';
+import { LinkCard, LinkCardContainer } from 'components/LinkCard';
+
+# Base - 基本介绍
+
+## Spring Cloud
+
+Spring Cloud 是一个基于 Spring Boot 的微服务框架，它为开发分布式系统提供了一系列工具和库。Spring Cloud 封装了很多常见的分布式系统模式，如配置管理、服务发现、断路器、智能路由、微代理、控制总线、全局锁、决策竞选、分布式会话和集群状态管理等。通过这些工具，开发者可以轻松地构建弹性、可扩展的微服务架构，并且可以轻松集成已有的技术栈。
+
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825112002753.png" alt="" />
+
+Spring Cloud 的优势在于它是一个模块化的框架，允许开发者根据需求选择和集成不同的组件。这种灵活性使其成为微服务架构中的事实标准框架。
+
+## Spring Cloud Alibaba
+
+Spring Cloud 在微服务架构中已成为一个事实标准，几乎所有从事 Java 开发的程序员都需要掌握这一技术。然而，在中国的互联网环境中，Spring Cloud Alibaba 更加贴合国内的业务场景和需求。Spring Cloud Alibaba 是由阿里巴巴基于 Spring Cloud 扩展而来的一个子项目，它集成了阿里巴巴在双 11 等高并发、大规模分布式系统中积累的中间件和技术，具有很高的实战价值。
+
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825112035707.png" alt="" />
+
+以下是学习 Spring Cloud Alibaba 的几个重要原因：
+
+1. **国内主流微服务框架**：Spring Cloud Alibaba 涵盖了阿里巴巴多年来开源的重要中间件，如 Nacos、Sentinel、RocketMQ 等，这些中间件经过了双 11 的大规模考验，具有很高的稳定性和性能保障。
+2. **官方认证**：Spring Cloud Alibaba 已经获得了 Spring Cloud 官方的认证，被列入了 Spring Cloud 的官方项目，这表明了其在全球范围内的重要性和影响力。
+3. **与国内环境高度契合**：Spring Cloud Alibaba 是为了解决中国企业在互联网环境中常见的技术挑战而设计的，能够更好地适应国内市场的需求。
+4. **强大的社区支持**：Spring Cloud Alibaba 拥有活跃的开源社区，并且阿里巴巴在不断地更新和完善这一项目，使其在国内微服务市场中具有很强的竞争力。
+5. **丰富的技术生态**：Spring Cloud Alibaba 涵盖了服务注册与发现、配置管理、服务容错、服务调用、负载均衡、服务网关、消息队列、链路追踪、分布式事务等多个领域的开源组件，能够满足企业级应用的各种需求。
+
+## 开发环境准备
+
+在开始学习 Spring Cloud Alibaba 之前，需要确保开发环境已经准备就绪。以下是基本的开发环境要求：
+
+* JDK 17
+* MySQL 8.0
+* Maven
+* Git
+
+## 技术栈选型
+
+Spring Cloud Alibaba 是一个涵盖了多个关键中间件的完整技术栈。以下是 Spring Cloud 和 Spring Cloud Alibaba 常见技术选型的对比：
+
+| 组件       | Spring Cloud                 | Spring Cloud Netflix       | Spring Cloud Alibaba | Other              |
+| ---------- | ---------------------------- | -------------------------- | -------------------- | ------------------ |
+| 注册中心   | Service Registry             | Eureka 1.x/2.x（停止维护） | Nacos                | Zookeeper, Consul  |
+| 配置中心   | Spring Cloud Config          | Archaius（停止维护）       | Nacos                | Apollo, Disconf    |
+| 服务容错   | Spring Cloud Circuit Breaker | Hystrix（停止维护）        | Sentinel             | Resilience4J       |
+| 服务调用   | Spring Cloud OpenFeign       | Feign                      |                      |                    |
+| 负载均衡   | Spring Cloud LoadBalancer    | Ribbon（停止维护）         |                      |                    |
+| 服务网关   | Spring Cloud Gateway         | Zuul（停止维护）           |                      | Nginx + Lua, Kong  |
+| 消息队列   | Spring Cloud Stream          | RabbitMQ, Kafka            | RocketMQ             |                    |
+| 链路追踪   | Spring Cloud Sleuth          |                            |                      | Zipkin, SkyWalking |
+| 分布式事务 |                              |                            | Seata                |                    |
+
+我们的重点会放在 Spring Cloud Alibaba 的主要组件，如 Nacos、Sentinel、RocketMQ、Seata 等。这些组件不仅是国内市场的主流技术选型，也是微服务架构中的关键部分。
+
+## 主版本线关系
+
+Spring Cloud Alibaba 的版本号与 Spring Cloud 版本保持一致，但并非每个版本都完全同步更新。例如，Spring Cloud 2021.0.2 和 2021.0.3 对应的 Spring Cloud Alibaba 并没有发布相应版本。因此，在选择版本时，需要注意各版本间的兼容性。
+
+截至目前，Spring Cloud 的最新版本为 2023.0.3：
+
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825111941188.png" alt="" />
+
+下面是个版本对应关系：（我们这里只关注 GA 正式版）
+
+| Spring Cloud | Spring Cloud Alibaba | Spring Boot | JDK  |
+| ------------ | -------------------- | ----------- | ---- |
+| 2023.0.1     | 2023.0.1.0           | 3.2.4       | 17+  |
+| 2022.0.0     | 2022.0.0.0           | 3.0.2       | 17+  |
+| 2021.0.5     | 2021.0.6.0           | 2.6.13      | 8    |
+
+上面的版本发布说明来自 Spring Cloud Alibaba 官方文档：
+
+[https://sca.aliyun.com/docs/2023/overview/version-explain/?spm=5176.29160081.0.0.74802aa6CdlOfk](https://sca.aliyun.com/docs/2023/overview/version-explain/?spm=5176.29160081.0.0.74802aa6CdlOfk)
+
+## 查看版本对应关系
+
+在实际开发中，各个组件的兼容性是一个跟重要的问题。因此，我们有必要了解一下如何查询各版本之间的对应关系，最推荐和靠谱的自然就是基于官方网站进行进行查询。这里我们以 Spring Cloud 为例进行演示。
+
+进入 Spring 官网：
+
+<LinkCardContainer>
+    <LinkCard href="https://spring.io/" />
+</LinkCardContainer>
+
+找到 Spring Cloud 项目后，可以在【LEARN】选择具体的版本，进入【<LinkCardContainer>
+    <LinkCard href="https://docs.spring.io/spring-cloud-release/reference/2023.0/index.html" />
+</LinkCardContainer>】即可在 Spring Cloud Train Reference Documentation 一节看到支持的 Spring Boot 版本：
+
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825120629093.png" alt="" />
+
+得到支持的 Spring Boot 版本后，可以通过同样的思路找到对应的 Spring Boot，进入【<LinkCardContainer>
+    <LinkCard href="https://docs.spring.io/spring-boot/docs/2.7.18/reference/html/" />
+</LinkCardContainer>】，即可查看该 SpringBoot 版本支持的组件版本：（如果没有刚好对应的 SpringBoot 3.2.7 是很正常的，继续往后看）
+
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825121700640.png" alt="" />
+
+以 3.2.9 为例，Spring Boot 的版本说明一般在 Getting Started 页面可以找到，例如 JDK、Maven、Tomcat 等的兼容版本：
+
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825121825843.png" alt="" />
+
+当然，你也可以在【OVERVIEW】页面进入 “<LinkCardContainer>
+    <LinkCard href="https://github.com/spring-projects/spring-boot/wiki#release-notes" />
+</LinkCardContainer>” 去到官方 Github 查看每个版本的详细调整和兼容情况说明：
+
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825121212800.png" alt="" />
+
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825121251836.png" alt="" />
+
+点击进入【<LinkCardContainer>
+    <LinkCard href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-Older-Release-Notes" />
+</LinkCardContainer>】可以查看每个版本的具体更新说明：
+
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825121336233.png" alt="" />
+
+这里我们以 Spring Boot 3.2.x 为例，在这里可以看到该版本更详细的官方说明：
+
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825121941064.png" alt="" />
+
+那么，Spring Cloud Alibaba 的版本又如何确定呢？回到 Spring Cloud 官方文档，在 OVERVIEW 页面的【Adding Spring Cloud To An Existing Spring Boot Application】一节有大致的版本对应关系，我们通过上方的 “see <LinkCardContainer>
+    <LinkCard href="https://github.com/spring-cloud/spring-cloud-release/wiki/Supported-Versions#supported-releases" />
+</LinkCardContainer> for more detailed information” 进入 Supported Versions 详情页面即可。
+
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825113227906.png" alt="" />
+
+然后可以通过点击 Supported Versions 页面右侧的具体版本进行查看：
+
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825113443607.png" alt="" />
+
+这里我们以 <LinkCardContainer>
+    <LinkCard href="https://github.com/spring-cloud/spring-cloud-release/wiki/Spring-Cloud-2023.0-Release-Notes" />
+</LinkCardContainer> 为例，点击进入之后就能看到具体到每个小版本的各组件对应关系：
+
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825113701538.png" alt="" />
+
+然后进入 Spring Cloud Alibaba 官方网站：
+
+https://sca.aliyun.com/
+
+选择对应的版本：
+
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825113824658.png" alt="" />
+
+在【概览 - 版本发布说明】即可查看到 Spring Cloud 2023.0.3 对应的 Spring Cloud Alibaba 版本，以及各相关组件的对应关系：
+
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825114034940.png" alt="" />
+
+> TIP：
+>
+> Spring Cloud Alibaba 版本按从新到旧排列如（最新版本用 * 标记），前三位为 Spring Cloud 版本，最后一位为扩展版本。比如适配 Spring Cloud 2023.0.1 版本对应的 Spring Cloud Alibaba 第一个版本为：2023.0.0.0-RC1，第个二版本为：2023.0.1.0，依此类推。
+
+## Alibaba 各组件版本关系
+
+每个 Spring Cloud Alibaba 版本都对应着特定的中间件版本组合。开发者在使用时，可以根据具体的业务需求选择合适的版本组合，但要注意不同版本之间可能存在的兼容性问题。
+
+| Spring Cloud Alibaba | Sentinel | Nacos    | RocketMQ | Seata            |
+| -------------------- | -------- | -------- | -------- | ---------------- |
+| 2023.0.1.0           | 1.8.6    | 2.3.2    | 5.1.4    | 2.0.0            |
+| 2023.0.0.0-RC1       | 1.8.6    | 2.3.0    | 5.1.4    | 2.0.0            |
+| 2022.0.0.0           | 1.8.6    | 2.2.1    | 4.9.4    | 1.7.0            |
+| 2022.0.0.0-RC2       | 1.8.6    | 2.2.1    | 4.9.4    | 1.7.0-native-rc2 |
+| 2022.0.0.0-RC1       | 1.8.6    | 2.2.1-RC | 4.9.4    | 1.6.1            |
+| 2021.0.6.0           | 1.8.6    | 2.2.0    | 4.9.4    | 1.6.1            |
+| 2021.0.5.0           | 1.8.6    | 2.2.0    | 4.9.4    | 1.6.1            |
+| 2021.0.4.0           | 1.8.5    | 2.0.4    | 4.9.4    | 1.5.2            |
+| 2021.0.1.0           | 1.8.3    | 1.4.2    | 4.9.2    | 1.4.2            |
+
+上面的版本发布说明来自 Spring Cloud Alibaba 官方文档：
+
+https://sca.aliyun.com/docs/2023/overview/version-explain/?spm=5176.29160081.0.0.74802aa6CdlOfk
+
