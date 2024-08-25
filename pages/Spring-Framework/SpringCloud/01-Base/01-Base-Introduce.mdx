@@ -1,5 +1,5 @@
-import PostImg from 'components/PostImg';
 import { LinkCard, LinkCardContainer } from 'components/LinkCard';
+import PostImg from 'components/PostImg';
 
 # Base - 基本介绍
 
@@ -7,7 +7,7 @@ import { LinkCard, LinkCardContainer } from 'components/LinkCard';
 
 Spring Cloud 是一个基于 Spring Boot 的微服务框架，它为开发分布式系统提供了一系列工具和库。Spring Cloud 封装了很多常见的分布式系统模式，如配置管理、服务发现、断路器、智能路由、微代理、控制总线、全局锁、决策竞选、分布式会话和集群状态管理等。通过这些工具，开发者可以轻松地构建弹性、可扩展的微服务架构，并且可以轻松集成已有的技术栈。
 
-<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825112002753.png" alt="" />
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825112002753.png" />
 
 Spring Cloud 的优势在于它是一个模块化的框架，允许开发者根据需求选择和集成不同的组件。这种灵活性使其成为微服务架构中的事实标准框架。
 
@@ -15,7 +15,7 @@ Spring Cloud 的优势在于它是一个模块化的框架，允许开发者根�
 
 Spring Cloud 在微服务架构中已成为一个事实标准，几乎所有从事 Java 开发的程序员都需要掌握这一技术。然而，在中国的互联网环境中，Spring Cloud Alibaba 更加贴合国内的业务场景和需求。Spring Cloud Alibaba 是由阿里巴巴基于 Spring Cloud 扩展而来的一个子项目，它集成了阿里巴巴在双 11 等高并发、大规模分布式系统中积累的中间件和技术，具有很高的实战价值。
 
-<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825112035707.png" alt="" />
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825112035707.png" />
 
 以下是学习 Spring Cloud Alibaba 的几个重要原因：
 
@@ -58,7 +58,7 @@ Spring Cloud Alibaba 的版本号与 Spring Cloud 版本保持一致，但并非
 
 截至目前，Spring Cloud 的最新版本为 2023.0.3：
 
-<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825111941188.png" alt="" />
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825111941188.png" />
 
 下面是个版本对应关系：（我们这里只关注 GA 正式版）
 
@@ -70,7 +70,9 @@ Spring Cloud Alibaba 的版本号与 Spring Cloud 版本保持一致，但并非
 
 上面的版本发布说明来自 Spring Cloud Alibaba 官方文档：
 
-[https://sca.aliyun.com/docs/2023/overview/version-explain/?spm=5176.29160081.0.0.74802aa6CdlOfk](https://sca.aliyun.com/docs/2023/overview/version-explain/?spm=5176.29160081.0.0.74802aa6CdlOfk)
+<LinkCardContainer>
+    <LinkCard href="https://sca.aliyun.com/docs/2023/overview/version-explain/?spm=5176.29160081.0.0.74802aa6CdlOfk" />
+</LinkCardContainer>
 
 ## 查看版本对应关系
 
@@ -82,67 +84,57 @@ Spring Cloud Alibaba 的版本号与 Spring Cloud 版本保持一致，但并非
     <LinkCard href="https://spring.io/" />
 </LinkCardContainer>
 
-找到 Spring Cloud 项目后，可以在【LEARN】选择具体的版本，进入【<LinkCardContainer>
-    <LinkCard href="https://docs.spring.io/spring-cloud-release/reference/2023.0/index.html" />
-</LinkCardContainer>】即可在 Spring Cloud Train Reference Documentation 一节看到支持的 Spring Boot 版本：
+找到 Spring Cloud 项目后，可以在【LEARN】选择具体的版本，进入 [Reference Doc.](https://docs.spring.io/spring-cloud-release/reference/2023.0/index.html) 即可在 Spring Cloud Train Reference Documentation 一节看到支持的 Spring Boot 版本：
 
-<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825120629093.png" alt="" />
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825120629093.png" />
 
-得到支持的 Spring Boot 版本后，可以通过同样的思路找到对应的 Spring Boot，进入【<LinkCardContainer>
-    <LinkCard href="https://docs.spring.io/spring-boot/docs/2.7.18/reference/html/" />
-</LinkCardContainer>】，即可查看该 SpringBoot 版本支持的组件版本：（如果没有刚好对应的 SpringBoot 3.2.7 是很正常的，继续往后看）
+得到支持的 Spring Boot 版本后，可以通过同样的思路找到对应的 Spring Boot，进入 [Reference Doc.](https://docs.spring.io/spring-boot/docs/2.7.18/reference/html/)，即可查看该 SpringBoot 版本支持的组件版本：（如果没有刚好对应的 SpringBoot 3.2.7 是很正常的，继续往后看）
 
-<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825121700640.png" alt="" />
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825121700640.png" />
 
 以 3.2.9 为例，Spring Boot 的版本说明一般在 Getting Started 页面可以找到，例如 JDK、Maven、Tomcat 等的兼容版本：
 
-<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825121825843.png" alt="" />
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825121825843.png" />
 
-当然，你也可以在【OVERVIEW】页面进入 “<LinkCardContainer>
-    <LinkCard href="https://github.com/spring-projects/spring-boot/wiki#release-notes" />
-</LinkCardContainer>” 去到官方 Github 查看每个版本的详细调整和兼容情况说明：
+当然，你也可以在【OVERVIEW】页面进入 “[the project release notes section](https://github.com/spring-projects/spring-boot/wiki#release-notes)” 去到官方 Github 查看每个版本的详细调整和兼容情况说明：
 
-<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825121212800.png" alt="" />
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825121212800.png" />
 
-<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825121251836.png" alt="" />
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825121251836.png" />
 
-点击进入【<LinkCardContainer>
-    <LinkCard href="https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-Older-Release-Notes" />
-</LinkCardContainer>】可以查看每个版本的具体更新说明：
+点击进入 [Older Versions](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-Older-Release-Notes) 可以查看每个版本的具体更新说明：
 
-<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825121336233.png" alt="" />
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825121336233.png" />
 
 这里我们以 Spring Boot 3.2.x 为例，在这里可以看到该版本更详细的官方说明：
 
-<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825121941064.png" alt="" />
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825121941064.png" />
 
-那么，Spring Cloud Alibaba 的版本又如何确定呢？回到 Spring Cloud 官方文档，在 OVERVIEW 页面的【Adding Spring Cloud To An Existing Spring Boot Application】一节有大致的版本对应关系，我们通过上方的 “see <LinkCardContainer>
-    <LinkCard href="https://github.com/spring-cloud/spring-cloud-release/wiki/Supported-Versions#supported-releases" />
-</LinkCardContainer> for more detailed information” 进入 Supported Versions 详情页面即可。
+那么，Spring Cloud Alibaba 的版本又如何确定呢？回到 Spring Cloud 官方文档，在 OVERVIEW 页面的【Adding Spring Cloud To An Existing Spring Boot Application】一节有大致的版本对应关系，我们通过上方的 “see [here](https://github.com/spring-cloud/spring-cloud-release/wiki/Supported-Versions#supported-releases) for more detailed information” 进入 Supported Versions 详情页面即可。
 
-<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825113227906.png" alt="" />
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825113227906.png" />
 
 然后可以通过点击 Supported Versions 页面右侧的具体版本进行查看：
 
-<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825113443607.png" alt="" />
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825113443607.png" />
 
-这里我们以 <LinkCardContainer>
-    <LinkCard href="https://github.com/spring-cloud/spring-cloud-release/wiki/Spring-Cloud-2023.0-Release-Notes" />
-</LinkCardContainer> 为例，点击进入之后就能看到具体到每个小版本的各组件对应关系：
+这里我们以 [2023.0](https://github.com/spring-cloud/spring-cloud-release/wiki/Spring-Cloud-2023.0-Release-Notes) 为例，点击进入之后就能看到具体到每个小版本的各组件对应关系：
 
-<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825113701538.png" alt="" />
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825113701538.png" />
 
 然后进入 Spring Cloud Alibaba 官方网站：
 
-https://sca.aliyun.com/
+<LinkCardContainer>
+    <LinkCard href="https://sca.aliyun.com/" />
+</LinkCardContainer>
 
 选择对应的版本：
 
-<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825113824658.png" alt="" />
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825113824658.png" />
 
 在【概览 - 版本发布说明】即可查看到 Spring Cloud 2023.0.3 对应的 Spring Cloud Alibaba 版本，以及各相关组件的对应关系：
 
-<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825114034940.png" alt="" />
+<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240825114034940.png" />
 
 > TIP：
 >
@@ -166,5 +158,6 @@ https://sca.aliyun.com/
 
 上面的版本发布说明来自 Spring Cloud Alibaba 官方文档：
 
-https://sca.aliyun.com/docs/2023/overview/version-explain/?spm=5176.29160081.0.0.74802aa6CdlOfk
-
+<LinkCardContainer>
+    <LinkCard href="https://sca.aliyun.com/docs/2023/overview/version-explain/?spm=5176.29160081.0.0.74802aa6CdlOfk" />
+</LinkCardContainer>

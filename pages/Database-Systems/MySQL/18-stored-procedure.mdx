@@ -1,3 +1,5 @@
+import PostImg from 'components/PostImg';
+
 # 存储过程
 
 ## 基本介绍
@@ -107,10 +109,7 @@ VALUES
 ('郑十', 'EMP008', 'zhengshi@example.com', '13276543210', '市场专员', 7500.00, 2),
 ('陈十一', 'EMP009', 'chenshiyi@example.com', '13187654321', '运维工程师', 8500.00, 3),
 ('刘十二', 'EMP010', 'liushier@example.com', '13098765432', '测试工程师', 9500.00, 1);
-```
-
-![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823185509769.png)
-
+```<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823185509769.png" alt="" />
 下面是一个简单的存储过程示例，用于查询员工的工资。由于 SQL 语句的默认结束符为 `;`，在编写存储过程时，可能会遇到语法错误（如错误代码 1064）。为了解决此问题，我们可以使用 `DELIMITER` 关键字临时修改 SQL 语句的结束符，如下所示：
 
 ```sql
@@ -136,10 +135,7 @@ DROP PROCEDURE IF EXISTS se //
 > 2. 在创建新版本的存储过程前，需要先删除已有的存储过程，避免名称冲突。通过 `DROP PROCEDURE IF EXISTS` 命令，可以安全地删除已有存储过程。
 > 3. 当完成存储过程的定义后，通常需要将结束符恢复为默认的 `;`，以避免后续 SQL 语句执行时出现问题。
 
-执行结果：
-
-![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823185822987.png)
-
+执行结果：<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823185822987.png" alt="" />
 ## 存储过程的变量和赋值
 
 在 MySQL 存储过程中，变量的使用非常灵活，包括**局部变量、用户变量、会话变量和全局变量**。不同类型的变量具有不同的作用范围和使用场景。
@@ -172,10 +168,7 @@ BEGIN
 END //
   
 CALL val_set() //
-```
-
-![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823191117369.png)
-
+```<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823191117369.png" alt="" />
 使用 SELECT...INTO 接收查询结果：
 
 ```sql
@@ -195,10 +188,7 @@ BEGIN
 END //
 
 CALL val_into() //
-```
-
-![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823192254546.png)
-
+```<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823192254546.png" alt="" />
 ### 用户变量
 
 用户变量在**当前会话（连接）中有效**，类似于 Java 中的成员变量。用户变量的命名以`@`符号开头，并且无需提前声明，使用时即为声明。
@@ -224,10 +214,7 @@ CALL val_user() //
 
 -- 查询用户变量的值（同一个连接中）
 SELECT @val_name //
-```
-
-![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823192921209.png)
-
+```<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823192921209.png" alt="" />
 ### 会话变量
 
 会话变量由**系统提供，并且仅在当前会话（连接）中有效**。它们用于控制 MySQL 的行为，常用于优化和调试。
@@ -243,10 +230,7 @@ SELECT @val_name //
 ```sql
 -- 查看所有会话变量
 SHOW SESSION VARIABLES;
-```
-
-![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823193126599.png)
-
+```<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823193126599.png" alt="" />
 ```sql
 -- 查看指定的会话变量(最大连接数)
 SELECT @@session.max_connections;
@@ -276,12 +260,7 @@ SHOW GLOBAL VARIABLES LIKE '%char%';
 
 -- 查看全局变量 character_set_client 的值
 SELECT @@global.character_set_client;
-```
-
-![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823193558543.png)
-
-![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823193613736.png)
-
+```<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823193558543.png" alt="" /><PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823193613736.png" alt="" />
 全局变量通常用于配置服务器级别的参数，例如字符集、连接限制等。
 
 
@@ -311,10 +290,7 @@ CALL val_in('JAVGO') //
 
 -- 查询用户变量的值
 SELECT @val_name //
-```
-
-![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823194009918.png)
-
+```<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823194009918.png" alt="" />
 使用 OUT 参数：
 
 ```sql
@@ -330,10 +306,7 @@ CALL val_out(17, @name) //
 
 -- 查询用户变量的值
 SELECT @name //
-```
-
-![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823194255759.png)
-
+```<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823194255759.png" alt="" />
 使用 INOUT 参数：
 
 ```sql
@@ -359,10 +332,7 @@ SET @codes = 'TestCode' //
 
 -- 调用存储过程并传递参数
 CALL val_inout('张三', @codes) //
-```
-
-![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823200729380.png)
-
+```<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823200729380.png" alt="" />
 ## 存储过程中的流程控制
 
 在存储过程中，流程控制语句用于执行条件判断和分支操作。MySQL 支持多种流程控制语句，其中最常用的是 `IF` 和 `CASE` 语句。
@@ -418,10 +388,7 @@ END //
 CALL s_sql(17);
 ```
 
-在这个示例中，根据传入的员工ID查询其工资，并通过 `IF` 语句将工资划分为不同的标准。根据不同的工资范围，存储过程返回相应的工资标准。
-
-![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823201542166.png)
-
+在这个示例中，根据传入的员工ID查询其工资，并通过 `IF` 语句将工资划分为不同的标准。根据不同的工资范围，存储过程返回相应的工资标准。<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823201542166.png" alt="" />
 ### CASE 条件判断
 
 `CASE` 语句是另一种流程控制语句，类似于 Java 中的 `switch `语句。它通常用于需要多个条件判断的场景。`CASE `语句有两种语法形式，分别是基于值的 `CASE` 语句和基于条件的 `CASE` 语句。
@@ -477,10 +444,7 @@ BEGIN
 END //
 
 CALL s_case(17);
-```
-
-![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823202257584.png)
-
+```<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823202257584.png" alt="" />
 语法二（基于条件，推荐）：
 
 ```sql
@@ -553,10 +517,7 @@ BEGIN
 END //
 
 CALL s_loop();
-```
-
-![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823203420018.png)
-
+```<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823203420018.png" alt="" />
 示例2：循环打印1到10（使用 ITERATE 和 LEAVE 控制循环）,使用 `ITERATE` 跳过当前循环的剩余部分，继续下一次循环。
 
 ```sql
@@ -592,10 +553,7 @@ BEGIN
 END //
 
 CALL s_loop1();
-```
-
-![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823203626198.png)
-
+```<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823203626198.png" alt="" />
 ### REPEAT 循环
 
 `REPEAT` 循环类似于 Java 中的 `do...while` 循环，先执行循环体，然后再判断条件是否满足，直到条件不满足才会结束循环。
@@ -634,10 +592,7 @@ BEGIN
 END //
 
 CALL s_repeat();
-```
-
-![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823203955577.png)
-
+```<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823203955577.png" alt="" />
 ### WHILE 循环
 
 `WHILE `循环与 Java 中的 `while` 循环非常相似，在满足条件时执行循环体，否则退出。
@@ -674,10 +629,7 @@ BEGIN
 END //
 
 CALL s_while();
-```
-
-![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823204124437.png)
-
+```<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823204124437.png" alt="" />
 ## 游标与 Handler
 
 在复杂的数据库操作中，有时候需要逐行处理查询结果，这时可以使用游标（Cursor）。同时，为了更好地控制异常和流程，我们可以使用Handler。
@@ -741,10 +693,7 @@ END //
 CALL f();
 ```
 
-这个示例会输出第一行的 `id`、`name` 和 `salary`。由于游标默认逐行处理数据，如果只用一次 `FETCH` 语句，只能获取第一行记录。
-
-![](http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823205102930.png)
-
+这个示例会输出第一行的 `id`、`name` 和 `salary`。由于游标默认逐行处理数据，如果只用一次 `FETCH` 语句，只能获取第一行记录。<PostImg src="http://javgo-images.oss-cn-beijing.aliyuncs.com/javgo-web/image-20240823205102930.png" alt="" />
 为了获取所有记录，可以使用循环来遍历游标中的所有结果：
 
 ```sql
