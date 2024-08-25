@@ -3,8 +3,6 @@ import {DocsThemeConfig} from 'nextra-theme-docs'
 import {useRouter} from "next/router";
 
 const config: DocsThemeConfig = {
-    themeSwitch: {
-    },
     // 站点 log
     logo: (
         <>
